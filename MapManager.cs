@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using IronPython.Runtime;
 
 
 namespace TinyEditor
@@ -29,26 +30,25 @@ namespace TinyEditor
         /// <summary>
         /// Salva o mapa especificado em um arquivo JSON.
         /// </summary>
-        public void SaveMap(string mapName, string filePath)
+        public void SaveMap(Map map, string filePath)
         {
-            if (maps.ContainsKey(mapName))
-            {
-                string json = JsonConvert.SerializeObject(maps[mapName], Formatting.Indented);
-                File.WriteAllText(filePath,json);
-            }
+            string json = JsonConvert.SerializeObject(map, Formatting.Indented);
+            File.WriteAllText(filePath, json);
         }
 
         /// <summary>
-        /// Carrega um mapa a partir de um arquivo JSON e o adiciona à coleção.
+        /// Carrega um mapa a partir de um arquivo JSON.
+        /// Retorna o mapa carregado, ou null se falhar.
         /// </summary>
-        public void LoadMap(string mapName, string filePath)
+        public Map LoadMap(string filePath)
         {
             if (File.Exists(filePath))
             {
                 string json = File.ReadAllText(filePath);
                 Map map = JsonConvert.DeserializeObject<Map>(json);
-                maps[mapName] = map;
+                return map;
             }
+            return null;
         }
 
 

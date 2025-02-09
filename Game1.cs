@@ -3,11 +3,14 @@
 // tambpem implementa a seleção pelo cursor do mouse
 
 using System;
+using System.Windows.Forms;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using IronPython.Hosting;
 using Microsoft.Scripting.Hosting;
+using ButtonState = Microsoft.Xna.Framework.Input.ButtonState;
+using Keys = Microsoft.Xna.Framework.Input.Keys;
 
 
 namespace TinyEditor
@@ -51,7 +54,7 @@ namespace TinyEditor
             camera = new Camera2D(graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight);
 
             // Utilize o MapGenerator para criar um mapa
-            currentMap = MapGenerator.GenerateWaterBorderMap(10, 10, 64);
+            currentMap = MapGenerator.GenerateWaterBorderMap(25, 30, 32);
 
             // Instancia o MapManager e adiciona o mapa gerado
             mapManager = new MapManager();
@@ -75,6 +78,10 @@ namespace TinyEditor
             inputManager = new InputManager(camera, currentMap);
             guiManager = new GUIManager(pixel, font, graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight);
             mapEditor = new MapEditor(currentMap, camera, guiManager);
+
+            // Subscreve os eventos da GUI para salvar e carregar mapas
+            guiManager.OnSaveButtonClicked += HandleSaveMap;
+            guiManager.OnLoadButtonClicked += HandleLoadMap;
 
             previousGuiMouseState = Mouse.GetState();
 
@@ -121,6 +128,42 @@ namespace TinyEditor
             spriteBatch.End();
 
             base.Draw(gameTime);
+        }
+        
+        // Método chamado quando "Save Map" é clicado na GUI
+        private void HandleSaveMap()
+        {
+            using (SaveFileDialog saveDialog = new SaveFileDialog())
+            {
+                saveDialog.Filter = "JSON Files|*.json";
+                saveDialog.Title = "Save Map";
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                    mapManager.SaveMap(currentMap, saveDialog.FileName);
+            }
+
+        }
+
+        private void HandleLoadMap()
+        {
+            using (OpenFileDialog openDialog = new OpenFileDialog())
+            {
+                openDialog.Filter = "JSON Files|*.json";
+                openDialog.Title = "Load Map";
+                if (openDialog.ShowDialog() == DialogResult.OK)
+                {
+                    Map loadedMap = mapManager.LoadMap(openDialog.FileName);
+                    if (loadedMap != null)
+                    {
+                        currentMap = loadedMap;
+                        inputManager = new InputManager(camera, currentMap);
+                        mapEditor = new MapEditor(currentMap, camera, guiManager);
+                    }
+                    else
+                    {
+                        System.Windows.Forms.MessageBox.Show("Falha ao carregar o mapa.","Erro",MessageBoxButtons.OK,MessageBoxIcon.Error);
+                    }
+                }
+            }
         }
     }
 }

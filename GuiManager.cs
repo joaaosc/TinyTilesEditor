@@ -10,18 +10,23 @@ namespace TinyEditor
 {
     public class GUIManager
     {
+        // Eventos para notificar quando os botões de salvar ou carregar são clicados
+        public event Action OnSaveButtonClicked;
+        public event Action OnLoadButtonClicked;
+
         // Indica se estamos no modo de edição
         public bool EditModeActive { get; private set; } = false;
 
         // Cor atualmente selecionado para edição
         public Color SelectedColor { get; private set; } = Color.Red;
 
-        // Define a área da barra lateral (ex.: 200px de largura)
+        // área da barra lateral
         private Rectangle sidebarRect;
-        // Botão para alterar o modo de edição
+        // Botões
         private Rectangle editButtonRect;
-        // Lista de botões para seleção de cores (cada par: retângulo e a cor)
         private List<Tuple<Rectangle, Color>> colorButtons;
+        private Rectangle saveButtonRect;
+        private Rectangle loadButtonRect;
 
         private Texture2D pixel;
         private SpriteFont font;
@@ -53,25 +58,41 @@ namespace TinyEditor
                     new Rectangle(startX, startY + i * (buttonSize + spacing), buttonSize, buttonSize);
                 colorButtons.Add(new Tuple<Rectangle, Color>(buttonRectangle, palette[i]));
             }
+
+            // Botões de salvar e carregar
+            int buttonsY = startY + palette.Length * (buttonSize + spacing) + 20;
+            saveButtonRect = new Rectangle(10, buttonsY, 180, 40);
+            loadButtonRect = new Rectangle(10, buttonsY + 50, 180, 40);
         }
 
         /// <summary>
-        /// Deve ser chamado quando ocorrer um clique do mouse (apenas uma vez por clique)
+        /// Trata os cliques do mouse na GUI
         /// </summary>
         public void HandleMouseClick(Point mousePosition)
         {
             // Se o clique ocorreu dentro da área da barra lateral
             if (sidebarRect.Contains(mousePosition))
                 if (editButtonRect.Contains(mousePosition))
+                {
                     EditModeActive = !EditModeActive;
-            //Se o clique ocorreu em algum botão da paleta, atualiza a cor selecionada
-            foreach (var button in colorButtons)
-                if (button.Item1.Contains(mousePosition))
-                    SelectedColor = button.Item2;
+                }
+                else
+                {
+                    //Se o clique ocorreu em algum botão da paleta, atualiza a cor selecionada
+                    foreach (var button in colorButtons)
+                        if (button.Item1.Contains(mousePosition))
+                            SelectedColor = button.Item2;
+
+                }
+                // Verifica o botão de salvar mapa
+                if (saveButtonRect.Contains(mousePosition))
+                    OnSaveButtonClicked?.Invoke();
+                if (loadButtonRect.Contains(mousePosition))
+                    OnLoadButtonClicked?.Invoke();
         }
 
         /// <summary>
-        /// Desenha a interface gráfica (barra lateral, botão e paleta
+        /// Desenha a GUI
         /// </summary>
         /// <param name="spriteBatch"></param>
         public void Draw(SpriteBatch spriteBatch)
@@ -93,18 +114,20 @@ namespace TinyEditor
                 if (button.Item2 == SelectedColor)
                 {
                     int thickness = 2;
-                    // borda superior
+                    // Desenha bordas
                     spriteBatch.Draw(pixel, new Rectangle(button.Item1.X,button.Item1.Y,button.Item1.Width,thickness),Color.White);
-                    // Borda inferior
                     spriteBatch.Draw(pixel, new Rectangle(button.Item1.X, button.Item1.Y + button.Item1.Height - thickness, button.Item1.Width, thickness), Color.White);
-                    // Borda esquerda
                     spriteBatch.Draw(pixel, new Rectangle(button.Item1.X, button.Item1.Y, thickness, button.Item1.Height), Color.White);
-                    // Borda direita
                     spriteBatch.Draw(pixel, new Rectangle(button.Item1.X + button.Item1.Width - thickness, button.Item1.Y, thickness, button.Item1.Height), Color.White);
-
                 }
-
             }
+            // Botões de salvar e carregar
+            spriteBatch.Draw(pixel, saveButtonRect, Color.LightGray);
+            spriteBatch.DrawString(font,"Save Map", new Vector2(saveButtonRect.X + 20,saveButtonRect.Y + 10),Color.Black);
+
+            spriteBatch.Draw(pixel, loadButtonRect, Color.LightGray);
+            spriteBatch.DrawString(font, "Load Map", new Vector2(loadButtonRect.X + 20, loadButtonRect.Y + 10),
+                Color.Black);
 
         }
 
