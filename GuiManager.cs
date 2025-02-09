@@ -17,8 +17,10 @@ namespace TinyEditor
         // Indica se estamos no modo de edição
         public bool EditModeActive { get; private set; } = false;
 
-        // Cor atualmente selecionado para edição
-        public Color SelectedColor { get; private set; } = Color.Red;
+
+        // A cor selecionada agora pode vir tanto da paleta quanto do ColorPicker
+        private Color selectedColor = Color.Red;
+        public Color SelectedColor => selectedColor;
 
         // área da barra lateral
         private Rectangle sidebarRect;
@@ -27,6 +29,9 @@ namespace TinyEditor
         private List<Tuple<Rectangle, Color>> colorButtons;
         private Rectangle saveButtonRect;
         private Rectangle loadButtonRect;
+
+        // Integração com o ColorPicker
+        private ColorPicker colorPicker;
 
         private Texture2D pixel;
         private SpriteFont font;
@@ -63,6 +68,10 @@ namespace TinyEditor
             int buttonsY = startY + palette.Length * (buttonSize + spacing) + 20;
             saveButtonRect = new Rectangle(10, buttonsY, 180, 40);
             loadButtonRect = new Rectangle(10, buttonsY + 50, 180, 40);
+
+            // Instancia o ColorPicker (abaixo dos botões)
+            int colorPickerY = loadButtonRect.Bottom + 20;
+            colorPicker = new ColorPicker(pixel, font, 10, colorPickerY, 180, 200);
         }
 
         /// <summary>
@@ -81,7 +90,7 @@ namespace TinyEditor
                     //Se o clique ocorreu em algum botão da paleta, atualiza a cor selecionada
                     foreach (var button in colorButtons)
                         if (button.Item1.Contains(mousePosition))
-                            SelectedColor = button.Item2;
+                            selectedColor = button.Item2;
 
                 }
                 // Verifica o botão de salvar mapa
@@ -113,12 +122,7 @@ namespace TinyEditor
                 // Se este botão representa a cor selecionada, desenha uma borda
                 if (button.Item2 == SelectedColor)
                 {
-                    int thickness = 2;
-                    // Desenha bordas
-                    spriteBatch.Draw(pixel, new Rectangle(button.Item1.X,button.Item1.Y,button.Item1.Width,thickness),Color.White);
-                    spriteBatch.Draw(pixel, new Rectangle(button.Item1.X, button.Item1.Y + button.Item1.Height - thickness, button.Item1.Width, thickness), Color.White);
-                    spriteBatch.Draw(pixel, new Rectangle(button.Item1.X, button.Item1.Y, thickness, button.Item1.Height), Color.White);
-                    spriteBatch.Draw(pixel, new Rectangle(button.Item1.X + button.Item1.Width - thickness, button.Item1.Y, thickness, button.Item1.Height), Color.White);
+                    DrawBorder(spriteBatch, button.Item1, Color.White, 2);
                 }
             }
             // Botões de salvar e carregar
@@ -129,11 +133,38 @@ namespace TinyEditor
             spriteBatch.DrawString(font, "Load Map", new Vector2(loadButtonRect.X + 20, loadButtonRect.Y + 10),
                 Color.Black);
 
+            // Desenha o ColorPicker
+            colorPicker.Draw(spriteBatch);
+
+        }
+
+        private void DrawBorder(SpriteBatch spriteBatch, Rectangle rect, Color color, int thickness)
+        {
+            // Desenha uma borda ao redor do retângulo
+            // Borda superior
+            spriteBatch.Draw(pixel, new Rectangle(rect.X, rect.Y, rect.Width, thickness), color);
+            // Borda inferior
+            spriteBatch.Draw(pixel, new Rectangle(rect.X, rect.Bottom - thickness, rect.Width, thickness), color);
+            // Borda esquerda
+            spriteBatch.Draw(pixel, new Rectangle(rect.X, rect.Y, thickness, rect.Height), color);
+            // Borda direita
+            spriteBatch.Draw(pixel, new Rectangle(rect.Right - thickness, rect.Y, thickness, rect.Height), color);
         }
 
         ///<summary>
         /// Retorna a largura da barra lateral, para que possamos saber qual área é reservada à GUI.
         /// </summary>
         public int SidebarWidth => sidebarRect.Width;
+
+        /// <summary>
+        /// Atualiza a GUI a cada frame. O ColorPicker também precisa ser atualizado,
+        /// mesmo se o clique não estiver no exato momento, pois arrastar o slider muda a cor
+        /// </summary>
+        public void Update()
+        {
+            colorPicker.Update();
+            // Se o usuário arrastar o slider, a cor resultante muda
+            selectedColor = colorPicker.SelectedColor;
+        }
     }
 }

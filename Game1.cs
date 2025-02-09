@@ -43,6 +43,7 @@ namespace TinyEditor
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
+            Window.AllowUserResizing = true;
         }
 
         protected override void Initialize()
@@ -92,9 +93,8 @@ namespace TinyEditor
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
+            // Clique na GUI
             MouseState currentMouseState = Mouse.GetState();
-
-            // Se o clique ocorrer na área da GUI (barra lateral) e for um clique único, delega para o GUIManager.
             if (currentMouseState.LeftButton == ButtonState.Pressed &&
                 previousGuiMouseState.LeftButton == ButtonState.Released &&
                 currentMouseState.X < guiManager.SidebarWidth)
@@ -102,11 +102,17 @@ namespace TinyEditor
                 guiManager.HandleMouseClick(currentMouseState.Position);
             }
 
-            // Atualiza os demais gerenciadores:
-            // - InputManager: zoom e movimento da câmera (ainda é permitido usar Shift para mover a câmera)
+            // Atualiza GUI (inclui o ColorPicker)
+            guiManager.Update();
+
+            // Atualiza InputManager (movimento câmera, zoom, etc.)
             inputManager.Update();
-            // - MapEditor: se estivermos no modo de edição, permite alterar a cor do tile clicado na área do mapa.
+
+            // Atualiza editor (pintar tiles ao arrastar) 
             mapEditor.Update();
+
+            // Lembre de atualizar o map.SelectedRow / SelectedColumn em um desses gerenciadores,
+            // por exemplo, no inputManager ou no mapEditor, convertendo mouseScreenPos -> mouseWorldPos
 
             previousGuiMouseState = currentMouseState;
 

@@ -60,16 +60,22 @@ namespace TinyEditor
                         Rectangle tileRect = Tiles[row, col].DestinationRectangle;
 
                         // Borda superior
-                        spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y, tileRect.Width, thickness), borderColor);
+                        spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y, tileRect.Width, thickness),
+                            borderColor);
                         // Borda inferior
-                        spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y + tileRect.Height - thickness, tileRect.Width, thickness), borderColor);
+                        spriteBatch.Draw(pixel,
+                            new Rectangle(tileRect.X, tileRect.Y + tileRect.Height - thickness, tileRect.Width,
+                                thickness), borderColor);
                         // Borda esquerda
-                        spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y, thickness, tileRect.Height), borderColor);
+                        spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y, thickness, tileRect.Height),
+                            borderColor);
                         // Borda direita
-                        spriteBatch.Draw(pixel, new Rectangle(tileRect.X + tileRect.Width - thickness, tileRect.Y, thickness, tileRect.Height), borderColor);
+                        spriteBatch.Draw(pixel,
+                            new Rectangle(tileRect.X + tileRect.Width - thickness, tileRect.Y, thickness,
+                                tileRect.Height), borderColor);
+
                     }
                 }
-
         }
     }
 }
