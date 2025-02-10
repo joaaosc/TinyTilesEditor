@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.IO;
+using System.Windows.Forms; // Certifique-se de adicionar a referência a System.Windows.Forms
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using ButtonState = Microsoft.Xna.Framework.Input.ButtonState;
+using Keys = Microsoft.Xna.Framework.Input.Keys;
 
 namespace TinyEditor
 {
@@ -15,12 +15,19 @@ namespace TinyEditor
         private GUIManager guiManager;
         private MouseState previousMouseState;
 
+        // Propriedade para armazenar a textura selecionada para pintura
+        public Texture2D SelectedTexture { get; set; }
+        // NOVA: Propriedade para armazenar o identificador da textura selecionada (por exemplo, o nome)
+        public string SelectedTextureID { get; set; }
+
         public MapEditor(Map map, Camera2D camera, GUIManager guiManager)
         {
             this.map = map;
             this.camera = camera;
             this.guiManager = guiManager;
             previousMouseState = Mouse.GetState();
+            SelectedTexture = null; // Inicialmente, nenhuma textura está selecionada
+            SelectedTextureID = null;
         }
 
         public void Update()
@@ -45,14 +52,37 @@ namespace TinyEditor
 
                 if (row >= 0 && row < map.Rows && col >= 0 && col < map.Columns)
                 {
-                    // Altera a cor do tile para a cor selecionada na GUI
-                    map.Tiles[row, col].Color = guiManager.SelectedColor;
+                    // Somente pinta se uma textura estiver selecionada
+                    if (SelectedTexture != null)
+                    {
+                        // Aplica a textura selecionada ao tile
+                        map.Tiles[row, col].Texture = SelectedTexture;
+                        // Salva também o identificador da textura no tile
+                        map.Tiles[row, col].TextureID = SelectedTextureID;
+                    }
                 }
             }
 
-            // Atualiza o estado anterior do mouse para o próximo frame
             previousMouseState = currentMouseState;
         }
+
+        /// <summary>
+        /// Abre um diálogo para carregar uma textura a partir de um arquivo.
+        /// </summary>
+        public Texture2D LoadTextureFromFile(GraphicsDevice graphicsDevice)
+        {
+            using (OpenFileDialog dialog = new OpenFileDialog())
+            {
+                dialog.Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp";
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    using (var stream = File.OpenRead(dialog.FileName))
+                    {
+                        return Texture2D.FromStream(graphicsDevice, stream);
+                    }
+                }
+            }
+            return null;
+        }
     }
-    
 }

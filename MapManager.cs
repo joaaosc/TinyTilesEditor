@@ -32,7 +32,11 @@ namespace TinyEditor
         /// </summary>
         public void SaveMap(Map map, string filePath)
         {
-            string json = JsonConvert.SerializeObject(map, Formatting.Indented);
+            var settings = new JsonSerializerSettings
+            {
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+            };
+            string json = JsonConvert.SerializeObject(map, Formatting.Indented, settings);
             File.WriteAllText(filePath, json);
         }
 

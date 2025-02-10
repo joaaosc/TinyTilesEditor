@@ -28,12 +28,12 @@ namespace TinyEditor
                     if (row == 0 || col == 0 || row == map.Rows - 1 || col == map.Columns - 1)
                     {
                         // Tile de água (azul)
-                        map.Tiles[row, col] = new Tile(Color.Blue, destRect, TileType.Water, false);
+                        map.Tiles[row, col] = new Tile(destRect, TileType.Water, false);
                     }
                     else
                     {
                         // Tile de grama (verde)
-                        map.Tiles[row, col] = new Tile(Color.Green, destRect, TileType.Grass, true);
+                        map.Tiles[row, col] = new Tile(destRect, TileType.Grass, true);
                     }
                 }
             }

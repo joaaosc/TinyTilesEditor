@@ -1,9 +1,9 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Newtonsoft.Json;
 
 namespace TinyEditor
 {
-
     public enum TileType
     {
         Grass,
@@ -14,35 +14,32 @@ namespace TinyEditor
     public class Tile
     {
         public TileType Type { get; set; }
+
+        [JsonIgnore] // Não serializa o objeto Texture2D
         public Texture2D Texture { get; set; }
 
-        /// <summary>
-        /// Retângulo que define a posição e tamanho do tile na tela.
-        /// </summary>
+        // Propriedade para salvar o identificador da textura
+        public string TextureID { get; set; }
+
         public Rectangle DestinationRectangle { get; set; }
         public bool IsWalkable { get; set; }
 
-        /// <summary>
-        /// Cor base do tile. Futuramente, essa cor poderá ser substituída por uma textura.
-        /// </summary>
-        public Color Color { get; set; }
-
-
-        public Tile(Color color, Rectangle destinationRectangle, TileType type, bool isWalkable)
+        public Tile(Rectangle destinationRectangle, TileType type, bool isWalkable)
         {
-            Color = color;
             DestinationRectangle = destinationRectangle;
             Type = type;
             IsWalkable = isWalkable;
+            Texture = null;
+            TextureID = null;
         }
 
         /// <summary>
-        /// Desenha o tile utilizando a textura de 1x1 pixel.
+        /// Desenha o tile utilizando a textura aplicada, se houver.
         /// </summary>
         public void Draw(SpriteBatch spriteBatch, Texture2D pixel)
         {
-            spriteBatch.Draw(pixel,DestinationRectangle,Color);
+            if (Texture != null)
+                spriteBatch.Draw(Texture, DestinationRectangle, Color.White);
         }
-
     }
 }

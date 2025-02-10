@@ -1,8 +1,4 @@
-﻿// Configura a janela, cria uma textura para desenhar os retângulos 
-// instancia e preenche o mapa com tiles de cores sólidas
-// tambpem implementa a seleção pelo cursor do mouse
-
-using System;
+﻿using System;
 using System.Windows.Forms;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -11,7 +7,7 @@ using IronPython.Hosting;
 using Microsoft.Scripting.Hosting;
 using ButtonState = Microsoft.Xna.Framework.Input.ButtonState;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
-
+using MessageBox = System.Windows.Forms.MessageBox;
 
 namespace TinyEditor
 {
@@ -20,7 +16,6 @@ namespace TinyEditor
         private GraphicsDeviceManager graphics;
         private SpriteBatch spriteBatch;
 
-
         // Instâncias dos componentes do jogo
         private Camera2D camera;
         private Map currentMap;
@@ -28,15 +23,17 @@ namespace TinyEditor
         private GUIManager guiManager;
         private MapEditor mapEditor;
         private MapManager mapManager;
-
+        private TextureListUI textureListUI;
 
         // Textura de 1x1 pixel para desenhar retângulos
         private Texture2D pixel;
         // Fonte para desenhar textos na GUI
         private SpriteFont font;
 
-        // Para gerenciar cliques na área da GUI
+        // Para gerenciar cliques na área da GUI e no painel de texturas
         private MouseState previousGuiMouseState;
+        // Para evitar disparar múltiplas vezes a importação com a mesma pressão de tecla
+        private KeyboardState previousKeyboardState;
 
         public Game1()
         {
@@ -54,12 +51,20 @@ namespace TinyEditor
 
             camera = new Camera2D(graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight);
 
-            // Utilize o MapGenerator para criar um mapa
+            // Cria um mapa usando o MapGenerator (ex.: mapa com borda de água)
             currentMap = MapGenerator.GenerateWaterBorderMap(25, 30, 32);
 
             // Instancia o MapManager e adiciona o mapa gerado
             mapManager = new MapManager();
-            mapManager.AddMap("Mapa Default",currentMap);
+            mapManager.AddMap("Mapa Default", currentMap);
+
+            // Cria a área do painel de texturas (sidebar direita)
+            // Neste exemplo, a sidebar ocupa 200 pixels na parte direita da tela
+            Rectangle panelArea = new Rectangle(GraphicsDevice.Viewport.Width - 200, 10, 190, GraphicsDevice.Viewport.Height - 20);
+            textureListUI = new TextureListUI(panelArea);
+
+            // Inicializa o estado do teclado
+            previousKeyboardState = Keyboard.GetState();
 
             base.Initialize();
         }
@@ -68,33 +73,36 @@ namespace TinyEditor
         {
             spriteBatch = new SpriteBatch(GraphicsDevice);
 
-            // Cria uma textura de 1x1 pixel branco (usada para desenhar retângulos preenchidos)
+            // Cria uma textura de 1x1 pixel branco para desenhar retângulos
             pixel = new Texture2D(GraphicsDevice, 1, 1);
             pixel.SetData(new Color[] { Color.White });
 
-            // Carrega uma fonte (assegure-se de ter uma fonte chamada "DefaultFont" no Content)
+            // Carrega a fonte (certifique-se de ter uma fonte chamada "DefaultFont" no Content)
             font = Content.Load<SpriteFont>("DefaultFont");
 
             // Instancia os gerenciadores de entrada e edição
             inputManager = new InputManager(camera, currentMap);
             guiManager = new GUIManager(pixel, font, graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight);
             mapEditor = new MapEditor(currentMap, camera, guiManager);
+            // OBSERVAÇÃO: Certifique-se de que o MapEditor utiliza a propriedade SelectedTexture ao pintar
 
             // Subscreve os eventos da GUI para salvar e carregar mapas
             guiManager.OnSaveClicked += HandleSaveMap;
             guiManager.OnLoadClicked += HandleLoadMap;
 
             previousGuiMouseState = Mouse.GetState();
-
         }
 
         protected override void Update(GameTime gameTime)
         {
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+            // Encerra o jogo se o botão Back do GamePad ou a tecla Esc forem pressionados
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
+                Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
-            // Clique na GUI
             MouseState currentMouseState = Mouse.GetState();
+
+            // Processa cliques na área da GUI (sidebar à esquerda)
             if (currentMouseState.LeftButton == ButtonState.Pressed &&
                 previousGuiMouseState.LeftButton == ButtonState.Released &&
                 currentMouseState.X < guiManager.SidebarWidth)
@@ -102,18 +110,40 @@ namespace TinyEditor
                 guiManager.HandleMouseClick(currentMouseState.Position);
             }
 
-            // Atualiza GUI (inclui o ColorPicker)
-            guiManager.Update();
+            // Processa cliques na área do painel de texturas (sidebar direita)
+            if (currentMouseState.LeftButton == ButtonState.Pressed &&
+                previousGuiMouseState.LeftButton == ButtonState.Released &&
+                textureListUI.PanelArea.Contains(currentMouseState.Position))
+            {
+                TextureEntry selectedEntry = textureListUI.GetTextureEntryAtPoint(currentMouseState.Position);
+                if (selectedEntry != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Textura selecionada: " + selectedEntry.Name);
+                    // Atribui a textura selecionada ao MapEditor
+                    mapEditor.SelectedTexture = selectedEntry.Texture;
+                    // Aqui, usamos o nome da textura como identificador
+                    mapEditor.SelectedTextureID = selectedEntry.Name;
+                }
+            }
 
-            // Atualiza InputManager (movimento câmera, zoom, etc.)
+            // Atualiza a GUI e outros gerenciadores
+            guiManager.Update();
             inputManager.Update();
 
-            // Atualiza editor (pintar tiles ao arrastar) 
-            mapEditor.Update();
+            // Se o mouse NÃO estiver na área do painel de texturas, atualiza o MapEditor (para pintura)
+            if (!textureListUI.PanelArea.Contains(currentMouseState.Position))
+            {
+                mapEditor.Update();
+            }
+            // Caso esteja na sidebar, evita que o MapEditor pinte o mapa
 
-            // Lembre de atualizar o map.SelectedRow / SelectedColumn em um desses gerenciadores,
-            // por exemplo, no inputManager ou no mapEditor, convertendo mouseScreenPos -> mouseWorldPos
-
+            // Verifica se a tecla I foi pressionada para importar uma nova textura
+            KeyboardState currentKeyboardState = Keyboard.GetState();
+            if (currentKeyboardState.IsKeyDown(Keys.I) && !previousKeyboardState.IsKeyDown(Keys.I))
+            {
+                ImportarTextura();
+            }
+            previousKeyboardState = currentKeyboardState;
             previousGuiMouseState = currentMouseState;
 
             base.Update(gameTime);
@@ -123,20 +153,64 @@ namespace TinyEditor
         {
             GraphicsDevice.Clear(Color.Black);
 
-            // Desenha o mapa com a transformação da câmera
+            // Desenha o mapa aplicando a transformação da câmera
             spriteBatch.Begin(transformMatrix: camera.GetTransformation());
-            currentMap.Draw(spriteBatch,pixel);
+            currentMap.Draw(spriteBatch, pixel);
             spriteBatch.End();
 
-            // Desenha a GUI (sem transformação)
+            // Desenha a GUI (sem transformação de câmera)
             spriteBatch.Begin();
             guiManager.Draw(spriteBatch);
             spriteBatch.End();
 
+            // Desenha o painel de texturas (sidebar direita)
+            spriteBatch.Begin();
+            textureListUI.Draw(spriteBatch, pixel, font);
+            spriteBatch.End();
+
             base.Draw(gameTime);
         }
-        
-        // Método chamado quando "Save Map" é clicado na GUI
+
+        /// <summary>
+        /// Abre o diálogo para importar uma textura, cria um TextureEntry e o adiciona à sidebar.
+        /// </summary>
+        private void ImportarTextura()
+        {
+            Texture2D texturaImportada = LoadTextureFromFile(GraphicsDevice);
+            if (texturaImportada != null)
+            {
+                TextureEntry novaEntrada = new TextureEntry
+                {
+                    Name = "Textura " + (textureListUI.TextureEntries.Count + 1),
+                    Texture = texturaImportada
+                };
+                textureListUI.AddTexture(novaEntrada);
+            }
+        }
+
+        /// <summary>
+        /// Abre um OpenFileDialog para carregar uma imagem e retorna a Texture2D correspondente.
+        /// </summary>
+        private Texture2D LoadTextureFromFile(GraphicsDevice graphicsDevice)
+        {
+            Texture2D texture = null;
+            using (OpenFileDialog dialog = new OpenFileDialog())
+            {
+                dialog.Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp";
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    using (System.IO.FileStream stream = System.IO.File.OpenRead(dialog.FileName))
+                    {
+                        texture = Texture2D.FromStream(graphicsDevice, stream);
+                    }
+                }
+            }
+            return texture;
+        }
+
+        /// <summary>
+        /// Método chamado quando "Save Map" é clicado na GUI.
+        /// </summary>
         private void HandleSaveMap()
         {
             using (SaveFileDialog saveDialog = new SaveFileDialog())
@@ -146,9 +220,11 @@ namespace TinyEditor
                 if (saveDialog.ShowDialog() == DialogResult.OK)
                     mapManager.SaveMap(currentMap, saveDialog.FileName);
             }
-
         }
 
+        /// <summary>
+        /// Método chamado quando "Load Map" é clicado na GUI.
+        /// </summary>
         private void HandleLoadMap()
         {
             using (OpenFileDialog openDialog = new OpenFileDialog())
@@ -160,16 +236,32 @@ namespace TinyEditor
                     Map loadedMap = mapManager.LoadMap(openDialog.FileName);
                     if (loadedMap != null)
                     {
+                        // Percorre todos os tiles do mapa para reatribuir as texturas
+                        for (int row = 0; row < loadedMap.Rows; row++)
+                        {
+                            for (int col = 0; col < loadedMap.Columns; col++)
+                            {
+                                // Se o tile possui um TextureID salvo, tenta recuperar a textura correspondente
+                                if (!string.IsNullOrEmpty(loadedMap.Tiles[row, col].TextureID))
+                                {
+                                    loadedMap.Tiles[row, col].Texture =
+                                        textureListUI.GetTextureByID(loadedMap.Tiles[row, col].TextureID);
+                                }
+                            }
+                        }
+
+                        // Atualiza o mapa atual e os gerenciadores
                         currentMap = loadedMap;
                         inputManager = new InputManager(camera, currentMap);
                         mapEditor = new MapEditor(currentMap, camera, guiManager);
                     }
                     else
                     {
-                        System.Windows.Forms.MessageBox.Show("Falha ao carregar o mapa.","Erro",MessageBoxButtons.OK,MessageBoxIcon.Error);
+                        MessageBox.Show("Falha ao carregar o mapa.", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
         }
+
     }
 }
