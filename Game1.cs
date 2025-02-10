@@ -81,8 +81,8 @@ namespace TinyEditor
             mapEditor = new MapEditor(currentMap, camera, guiManager);
 
             // Subscreve os eventos da GUI para salvar e carregar mapas
-            guiManager.OnSaveButtonClicked += HandleSaveMap;
-            guiManager.OnLoadButtonClicked += HandleLoadMap;
+            guiManager.OnSaveClicked += HandleSaveMap;
+            guiManager.OnLoadClicked += HandleLoadMap;
 
             previousGuiMouseState = Mouse.GetState();
 

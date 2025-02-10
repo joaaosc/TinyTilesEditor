@@ -132,8 +132,8 @@ namespace TinyEditor
             // Preview da cor
             Rectangle previewRectangle = new Rectangle(backgroundRectangle.X + 10, backgroundRectangle.Y + 130, 60, 60);
             spriteBatch.Draw(pixel, previewRectangle, SelectedColor);
-            spriteBatch.DrawString(font, $"R:{valueR} | G: {valueG} | B {valueB}",
-                new Vector2(previewRectangle.Right + 10,previewRectangle.Y+20),Color.Black);
+            spriteBatch.DrawString(font, $"R:{valueR}\nG:{valueG}\nB:{valueB}",
+                new Vector2(previewRectangle.Right + 10,previewRectangle.Y+10),Color.Black);
         }
 
         /// <summary>
