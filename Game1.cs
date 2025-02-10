@@ -263,5 +263,53 @@ namespace TinyEditor
             }
         }
 
+        private void DrawFogOfWar(SpriteBatch spriteBatch)
+        {
+            // Define os limites do mapa em coordenadas do mundo.
+            Rectangle mapBounds = new Rectangle(0, 0, currentMap.Columns * currentMap.TileSize, currentMap.Rows * currentMap.TileSize);
+
+            // Calcula o retângulo visível (view rectangle) em coordenadas do mundo.
+            Vector2 topLeft = Vector2.Transform(Vector2.Zero, Matrix.Invert(camera.GetTransformation()));
+            Vector2 bottomRight = Vector2.Transform(new Vector2(graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight),
+                                                    Matrix.Invert(camera.GetTransformation()));
+            Rectangle viewRect = new Rectangle((int)topLeft.X, (int)topLeft.Y,
+                                               (int)(bottomRight.X - topLeft.X), (int)(bottomRight.Y - topLeft.Y));
+
+            // Define a cor do fog (preto com transparência, ajuste o valor alfa conforme desejado).
+            Color fogColor = new Color(0, 0, 0, 180);
+
+            // Se houver área à esquerda do mapa (quando a visão vai além de x=0).
+            if (viewRect.X < mapBounds.X)
+            {
+                int fogWidth = mapBounds.X - viewRect.X;
+                Rectangle fogRect = new Rectangle(viewRect.X, viewRect.Y, fogWidth, viewRect.Height);
+                spriteBatch.Draw(pixel, fogRect, fogColor);
+            }
+
+            // Se houver área acima do mapa (quando a visão vai além de y=0).
+            if (viewRect.Y < mapBounds.Y)
+            {
+                int fogHeight = mapBounds.Y - viewRect.Y;
+                Rectangle fogRect = new Rectangle(viewRect.X, viewRect.Y, viewRect.Width, fogHeight);
+                spriteBatch.Draw(pixel, fogRect, fogColor);
+            }
+
+            // Se houver área à direita do mapa.
+            if (viewRect.Right > mapBounds.Right)
+            {
+                int fogWidth = viewRect.Right - mapBounds.Right;
+                Rectangle fogRect = new Rectangle(mapBounds.Right, viewRect.Y, fogWidth, viewRect.Height);
+                spriteBatch.Draw(pixel, fogRect, fogColor);
+            }
+
+            // Se houver área abaixo do mapa.
+            if (viewRect.Bottom > mapBounds.Bottom)
+            {
+                int fogHeight = viewRect.Bottom - mapBounds.Bottom;
+                Rectangle fogRect = new Rectangle(viewRect.X, mapBounds.Bottom, viewRect.Width, fogHeight);
+                spriteBatch.Draw(pixel, fogRect, fogColor);
+            }
+        }
+
     }
 }
