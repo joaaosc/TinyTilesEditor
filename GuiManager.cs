@@ -11,7 +11,12 @@ namespace TinyEditor
 
 
         // Indica se estamos no modo de edição
-        public bool EditModeActive { get; private set; } = false;
+        public bool EditModeActive = false;
+        public void SetEditModeActive(bool active)
+        {
+            EditModeActive = active;
+        }
+
 
         // A cor selecionada vem do ColorPicker
         public Color SelectedColor => colorPicker.SelectedColor;
@@ -108,6 +113,9 @@ namespace TinyEditor
 
             spriteBatch.Draw(pixel, loadButtonRect, Color.LightBlue);
             spriteBatch.DrawString(font, "Load Map", new Vector2(loadButtonRect.X + 20, loadButtonRect.Y + 10), Color.Black);
+
+            Color buttonColor = EditModeActive ? Color.LightCoral : Color.Gray;
+
 
             // Desenha o ColorPicker (que agora é a única forma de selecionar uma cor)
             colorPicker.Draw(spriteBatch);

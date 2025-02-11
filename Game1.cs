@@ -24,6 +24,7 @@ namespace TinyEditor
         private MapEditor mapEditor;
         private MapManager mapManager;
         private TextureListUI textureListUI;
+        private bool editModeActive = false;
 
         // Textura de 1x1 pixel para desenhar retângulos
         private Texture2D pixel;
@@ -143,6 +144,16 @@ namespace TinyEditor
             {
                 ImportarTextura();
             }
+
+            if (currentKeyboardState.IsKeyDown(Keys.E) && !previousKeyboardState.IsKeyDown(Keys.E))
+            {
+                // Inverte o estado do Edit Mode
+                editModeActive = !editModeActive;
+
+                // Atualiza o botão na GUI
+                guiManager.SetEditModeActive(editModeActive);
+            }
+
             previousKeyboardState = currentKeyboardState;
             previousGuiMouseState = currentMouseState;
 
