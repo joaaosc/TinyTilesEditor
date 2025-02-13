@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Windows.Forms;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -10,6 +11,7 @@ using ButtonState = Microsoft.Xna.Framework.Input.ButtonState;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using MessageBox = System.Windows.Forms.MessageBox;
 using TinyAnimation;
+using SharpDX.Direct3D9;
 
 namespace TinyEditor
 {
@@ -90,6 +92,7 @@ namespace TinyEditor
 
         protected override void LoadContent()
         {
+            TextureLoader.GraphicsDevice = GraphicsDevice;
             spriteBatch = new SpriteBatch(GraphicsDevice);
             animatedSprites = new List<AnimatedSprite>();
 
@@ -388,7 +391,50 @@ namespace TinyEditor
                 }
             }
         }
+        public static class TextureLoader
+        {
+            // Dicionário para armazenar texturas já carregadas, evitando recarregar a mesma textura.
+            private static Dictionary<string, Texture2D> loadedTextures = new Dictionary<string, Texture2D>();
 
+            // Propriedade que deve ser definida no Game1, para que o TextureLoader tenha acesso ao GraphicsDevice.
+            public static GraphicsDevice GraphicsDevice { get; set; }
+
+            /// <summary>
+            /// Carrega uma textura a partir do caminho especificado (textureID). 
+            /// Se a textura já tiver sido carregada, retorna a referência em cache.
+            /// </summary>
+            /// <param name="textureID">Caminho do arquivo ou identificador da textura.</param>
+            /// <returns>A instância de Texture2D ou null se não conseguir carregar.</returns>
+            public static Texture2D Load(string textureID)
+            {
+                if (loadedTextures.ContainsKey(textureID))
+                {
+                    return loadedTextures[textureID];
+                }
+
+                if (GraphicsDevice == null)
+                {
+                    throw new Exception("A propriedade GraphicsDevice do TextureLoader não foi definida.");
+                }
+
+                // Verifica se o arquivo existe
+                if (!File.Exists(textureID))
+                {
+                    throw new FileNotFoundException("Arquivo de textura não encontrado.", textureID);
+                }
+
+                // Carrega a textura a partir do stream do arquivo
+                Texture2D texture;
+                using (FileStream stream = new FileStream(textureID, FileMode.Open, FileAccess.Read))
+                {
+                    texture = Texture2D.FromStream(GraphicsDevice, stream);
+                }
+
+                // Armazena a textura no cache e a retorna
+                loadedTextures[textureID] = texture;
+                return texture;
+            }
+        }
 
     }
 }

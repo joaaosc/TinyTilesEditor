@@ -1,10 +1,15 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System;
+using System.Collections.Generic;
+using TinyAnimation;
+using static TinyEditor.Tile;
 
 namespace TinyEditor
 {
     public class Map
     {
+        public List<AnimatedSprite> AnimatedSprites { get; set; } = new List<AnimatedSprite>();
         public int Rows { get; set; }
         public int Columns { get; set; }
         public int TileSize { get; set; }
@@ -19,7 +24,65 @@ namespace TinyEditor
             Rows = rows;
             Columns = columns;
             TileSize = tileSize;
+
+            // Inicializa a matriz de tiles
             Tiles = new Tile[rows, columns];
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < columns; c++)
+                {
+                    Rectangle tileRect = new Rectangle(c * TileSize, r * TileSize, TileSize, TileSize);
+                    Tiles[r, c] = new Tile(tileRect, 0, false)
+                    {
+                        TextureID = "defaultTile.png"
+                    };
+                }
+            }
+        }
+
+        /// <summary>
+        /// Extrai os dados dos tiles em um array jagged para serialização.
+        /// </summary>
+        public TileData[][] GetTileData()
+        {
+            TileData[][] tileData = new TileData[Rows][];
+            for (int r = 0; r < Rows; r++)
+            {
+                tileData[r] = new TileData[Columns];
+                for (int c = 0; c < Columns; c++)
+                {
+                    tileData[r][c] = new TileData
+                    {
+                        TextureID = Tiles[r, c].TextureID,
+                        TileType = Tiles[r, c].TileType
+                    };
+                }
+            }
+            return tileData;
+        }
+
+        /// <summary>
+        /// Restaura os dados dos tiles a partir do array jagged.
+        /// </summary>
+        public void SetTileData(TileData[][] tileData)
+        {
+            if (tileData == null)
+                return;
+
+            if (tileData.Length != Rows)
+                throw new Exception("Número de linhas incompatível com o mapa atual.");
+
+            for (int r = 0; r < Rows; r++)
+            {
+                if (tileData[r].Length != Columns)
+                    throw new Exception("Número de colunas incompatível com o mapa atual.");
+
+                for (int c = 0; c < Columns; c++)
+                {
+                    Tiles[r, c].TextureID = tileData[r][c].TextureID;
+                    Tiles[r, c].TileType = tileData[r][c].TileType;
+                }
+            }
         }
 
         /// <summary>
@@ -48,34 +111,31 @@ namespace TinyEditor
         public void Draw(SpriteBatch spriteBatch, Texture2D pixel)
         {
             for (int row = 0; row < Rows; row++)
-            for (int col = 0; col < Columns; col++)
-                if (Tiles[row, col] != null)
+            {
+                for (int col = 0; col < Columns; col++)
                 {
-                    Tiles[row, col].Draw(spriteBatch, pixel);
-                    // Se este tile está selecionado, desenha um efeito de seleção (borda)
-                    if (row == SelectedRow && col == SelectedColumn)
+                    if (Tiles[row, col] != null)
                     {
-                        int thickness = 3;
-                        Color borderColor = Color.Yellow;
-                        Rectangle tileRect = Tiles[row, col].DestinationRectangle;
+                        Tiles[row, col].Draw(spriteBatch, pixel);
+                        // Se este tile está selecionado, desenha um efeito de seleção (borda)
+                        if (row == SelectedRow && col == SelectedColumn)
+                        {
+                            int thickness = 3;
+                            Color borderColor = Color.Yellow;
+                            Rectangle tileRect = Tiles[row, col].DestinationRectangle;
 
-                        // Borda superior
-                        spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y, tileRect.Width, thickness),
-                            borderColor);
-                        // Borda inferior
-                        spriteBatch.Draw(pixel,
-                            new Rectangle(tileRect.X, tileRect.Y + tileRect.Height - thickness, tileRect.Width,
-                                thickness), borderColor);
-                        // Borda esquerda
-                        spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y, thickness, tileRect.Height),
-                            borderColor);
-                        // Borda direita
-                        spriteBatch.Draw(pixel,
-                            new Rectangle(tileRect.X + tileRect.Width - thickness, tileRect.Y, thickness,
-                                tileRect.Height), borderColor);
-
+                            // Borda superior
+                            spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y, tileRect.Width, thickness), borderColor);
+                            // Borda inferior
+                            spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y + tileRect.Height - thickness, tileRect.Width, thickness), borderColor);
+                            // Borda esquerda
+                            spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y, thickness, tileRect.Height), borderColor);
+                            // Borda direita
+                            spriteBatch.Draw(pixel, new Rectangle(tileRect.X + tileRect.Width - thickness, tileRect.Y, thickness, tileRect.Height), borderColor);
+                        }
                     }
                 }
+            }
         }
     }
 }

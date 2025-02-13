@@ -13,6 +13,7 @@ namespace TinyEditor
 
     public class Tile
     {
+
         public TileType Type { get; set; }
 
         [JsonIgnore] // Não serializa o objeto Texture2D
@@ -23,6 +24,14 @@ namespace TinyEditor
 
         public Rectangle DestinationRectangle { get; set; }
         public bool IsWalkable { get; set; }
+        public int TileType { get; set; }
+
+        // DTO para armazenar os dados de um tile
+        public class TileData
+        {
+            public string TextureID { get; set; }
+            public int TileType { get; set; }
+        }
 
         public Tile(Rectangle destinationRectangle, TileType type, bool isWalkable)
         {
@@ -32,6 +41,7 @@ namespace TinyEditor
             Texture = null;
             TextureID = null;
         }
+
 
         /// <summary>
         /// Desenha o tile utilizando a textura aplicada, se houver.
