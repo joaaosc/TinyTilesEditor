@@ -12,6 +12,7 @@ using Keys = Microsoft.Xna.Framework.Input.Keys;
 using MessageBox = System.Windows.Forms.MessageBox;
 using TinyAnimation;
 using SharpDX.Direct3D9;
+using Microsoft.VisualBasic;
 
 namespace TinyEditor
 {
@@ -19,6 +20,7 @@ namespace TinyEditor
     {
         private GraphicsDeviceManager graphics;
         private SpriteBatch spriteBatch;
+        private MouseState previousMouseState;
 
         // Instâncias dos componentes do jogo
         private Camera2D camera;
@@ -29,6 +31,8 @@ namespace TinyEditor
         private MapManager mapManager;
         private TextureListUI textureListUI;
         private bool editModeActive = false;
+        private bool isRemovingSprite = false;
+
         // Armazena a textura do sprite animado que foi escolhida pelo usuário
         private Texture2D pendingAnimatedSpriteTexture = null;
         // Lista de sprites animados adicionados no mapa
@@ -99,8 +103,6 @@ namespace TinyEditor
             // Cria uma textura de 1x1 pixel branco para desenhar retângulos
             pixel = new Texture2D(GraphicsDevice, 1, 1);
             pixel.SetData(new Color[] { Color.White });
-
-            // Carrega a fonte (certifique-se de ter uma fonte chamada "DefaultFont" no Content)
             font = Content.Load<SpriteFont>("DefaultFont");
 
             // Instancia os gerenciadores de entrada e edição
@@ -113,6 +115,8 @@ namespace TinyEditor
             guiManager.OnSaveClicked += HandleSaveMap;
             guiManager.OnLoadClicked += HandleLoadMap;
             guiManager.OnAddAnimatedSpriteClicked += HandleAddAnimatedSprite;
+            guiManager.OnRemoveAnimatedSpriteClicked += HandleRemoveAnimatedSprite;
+
 
             animatedSprites = new List<AnimatedSprite>();
 
@@ -218,7 +222,7 @@ namespace TinyEditor
             }
 
             // Atualiza a animação de cada sprite
-            foreach (var sprite in animatedSprites)
+            foreach (var sprite in currentMap.AnimatedSprites)
             {
                 sprite.Update(gameTime);
             }
@@ -229,6 +233,31 @@ namespace TinyEditor
             if (!textureListUI.PanelArea.Contains(currentMouseState.Position))
             {
                 mapEditor.Update();
+            }
+
+            // Verifica se a tecla R está pressionada e se o botão direito foi clicado
+            if (currentKeyboardState.IsKeyDown(Keys.R) &&
+                currentMouseState.RightButton == ButtonState.Pressed &&
+                previousGuiMouseState.RightButton == ButtonState.Released)
+            {
+                // Percorre os sprites do mapa atual (em ordem reversa para segurança na remoção)
+                for (int i = currentMap.AnimatedSprites.Count - 1; i >= 0; i--)
+                {
+                    AnimatedSprite sprite = currentMap.AnimatedSprites[i];
+                    // Define o retângulo do sprite com base na posição e dimensões do primeiro frame
+                    Rectangle spriteRect = new Rectangle(
+                        (int)sprite.Position.X,
+                        (int)sprite.Position.Y,
+                        sprite.FrameWidth,
+                        sprite.FrameHeight);
+
+                    if (spriteRect.Contains(new Point((int)mouseWorldPos.X, (int)mouseWorldPos.Y)))
+                    {
+                        // Remove o sprite encontrado e interrompe o loop
+                        currentMap.AnimatedSprites.RemoveAt(i);
+                        break;
+                    }
+                }
             }
 
             previousGuiMouseState = currentMouseState;
@@ -245,7 +274,7 @@ namespace TinyEditor
             // Inicia o spriteBatch com a transformação da câmera para desenhar o mapa e os sprites
             spriteBatch.Begin(transformMatrix: camera.GetTransformation());
             currentMap.Draw(spriteBatch, pixel);
-            foreach (var sprite in animatedSprites)
+            foreach (var sprite in currentMap.AnimatedSprites)
             {
                 sprite.Draw(spriteBatch);
             }
@@ -357,80 +386,129 @@ namespace TinyEditor
             }
         }
 
+        private void LoadNewMap(string filePath)
+        {
+            Map loadedMap = mapManager.LoadMap(filePath);
+            if (loadedMap != null)
+            {
+                // Substitua o mapa atual para que os sprites antigos sejam descartados.
+                currentMap = loadedMap;
+            }
+            else
+            {
+                MessageBox.Show("Falha ao carregar o mapa.", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void HandleRemoveAnimatedSprite()
+        {
+            // Ativa o modo de remoção
+            isRemovingSprite = true;
+        }
+
         private void HandleAddAnimatedSprite()
         {
-            using (OpenFileDialog dialog = new OpenFileDialog())
+            using (OpenFileDialog dlg = new OpenFileDialog())
             {
-                dialog.Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp";
-                dialog.Title = "Selecione o Sprite Sheet";
-                if (dialog.ShowDialog() == DialogResult.OK)
+                dlg.Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp";
+                dlg.Title = "Selecione o Sprite Sheet para adicionar";
+                if (dlg.ShowDialog() == DialogResult.OK)
                 {
-                    using (var stream = System.IO.File.OpenRead(dialog.FileName))
+                    string texturePath = dlg.FileName;
+                    Texture2D texture = TextureLoader.Load(texturePath);
+
+                    int frameCount = 1;
+                    // Se a largura for múltiplo da altura, podemos detectar automaticamente
+                    if (texture.Height > 0 && texture.Width % texture.Height == 0)
                     {
-                        pendingAnimatedSpriteTexture = Texture2D.FromStream(GraphicsDevice, stream);
+                        frameCount = texture.Width / texture.Height;
+                    }
+                    else
+                    {
+                        // Se não for, solicita ao usuário o número de frames
+                        string input = Interaction.InputBox(
+                            "Não foi possível detectar automaticamente o número de frames.\n" +
+                            "Insira o número de frames para essa spritesheet:",
+                            "Número de Frames",
+                            "1");
+                        if (!int.TryParse(input, out frameCount) || frameCount < 1)
+                        {
+                            MessageBox.Show("Valor inválido. Usando 1 frame (sprite estático).");
+                            frameCount = 1;
+                        }
                     }
 
-                    // Calcula o centro da tela em coordenadas do mundo
-                    // Se sua classe Camera2D possuir a propriedade Position, use-a; caso contrário, ajuste conforme necessário.
-                    Vector2 worldCenter = camera.Position + new Vector2(GraphicsDevice.Viewport.Width / 2f,
-                        GraphicsDevice.Viewport.Height / 2f);
+                    int frameWidth = texture.Width / frameCount;
+                    int frameHeight = texture.Height;
 
-                    // Cria o novo sprite animado no centro do mundo visível
-                    AnimatedSprite newSprite = new AnimatedSprite(
-                        pendingAnimatedSpriteTexture,
-                        worldCenter,
-                        frameWidth: 256 / 8,    // 256 / 2 frames
-                        frameHeight: 48,
-                        frameCount: 8,      // Apenas 2 frames na animação
-                        frameTime: 0.2f);
-                    ;                        ;
-                    animatedSprites.Add(newSprite);
+                    // Cria o sprite no centro da tela (convertendo para coordenadas do mundo, se estiver usando câmera)
+                    Vector2 screenCenter = new Vector2(GraphicsDevice.Viewport.Width / 2f, GraphicsDevice.Viewport.Height / 2f);
+                    Matrix invTransform = Matrix.Invert(camera.GetTransformation());
+                    Vector2 worldCenter = Vector2.Transform(screenCenter, invTransform);
 
-                    // Limpa a textura pendente
-                    pendingAnimatedSpriteTexture = null;
+                    AnimatedSprite sprite = new AnimatedSprite(texture, worldCenter, frameWidth, frameHeight, frameCount, 0.2f);
+                    sprite.TextureID = texturePath; // Salva o identificador da textura
+
+                    // Adiciona o sprite ao mapa atual
+                    currentMap.AnimatedSprites.Add(sprite);
                 }
             }
         }
+
         public static class TextureLoader
         {
-            // Dicionário para armazenar texturas já carregadas, evitando recarregar a mesma textura.
             private static Dictionary<string, Texture2D> loadedTextures = new Dictionary<string, Texture2D>();
 
-            // Propriedade que deve ser definida no Game1, para que o TextureLoader tenha acesso ao GraphicsDevice.
+            // Essa propriedade deve ser definida em Game1, por exemplo, em LoadContent.
             public static GraphicsDevice GraphicsDevice { get; set; }
 
             /// <summary>
-            /// Carrega uma textura a partir do caminho especificado (textureID). 
-            /// Se a textura já tiver sido carregada, retorna a referência em cache.
+            /// Tenta carregar a textura a partir do textureID (geralmente um caminho para o arquivo).
+            /// Se o arquivo não for encontrado, exibe um diálogo para o usuário localizá-lo manualmente.
             /// </summary>
-            /// <param name="textureID">Caminho do arquivo ou identificador da textura.</param>
-            /// <returns>A instância de Texture2D ou null se não conseguir carregar.</returns>
             public static Texture2D Load(string textureID)
             {
                 if (loadedTextures.ContainsKey(textureID))
-                {
                     return loadedTextures[textureID];
-                }
 
                 if (GraphicsDevice == null)
-                {
-                    throw new Exception("A propriedade GraphicsDevice do TextureLoader não foi definida.");
-                }
+                    throw new Exception("GraphicsDevice não foi definido no TextureLoader.");
 
-                // Verifica se o arquivo existe
                 if (!File.Exists(textureID))
                 {
-                    throw new FileNotFoundException("Arquivo de textura não encontrado.", textureID);
+                    DialogResult result = MessageBox.Show(
+                        $"Arquivo de textura não encontrado:\n{textureID}\nDeseja localizar manualmente?",
+                        "Textura não encontrada",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+
+                    if (result == DialogResult.Yes)
+                    {
+                        using (OpenFileDialog dlg = new OpenFileDialog())
+                        {
+                            dlg.Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp";
+                            dlg.Title = $"Localize a textura para: {textureID}";
+                            if (dlg.ShowDialog() == DialogResult.OK)
+                            {
+                                textureID = dlg.FileName;
+                            }
+                            else
+                            {
+                                throw new FileNotFoundException("Usuário cancelou a localização da textura.", textureID);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        throw new FileNotFoundException("Textura não encontrada e o usuário optou por não localizar.", textureID);
+                    }
                 }
 
-                // Carrega a textura a partir do stream do arquivo
                 Texture2D texture;
                 using (FileStream stream = new FileStream(textureID, FileMode.Open, FileAccess.Read))
                 {
                     texture = Texture2D.FromStream(GraphicsDevice, stream);
                 }
-
-                // Armazena a textura no cache e a retorna
                 loadedTextures[textureID] = texture;
                 return texture;
             }

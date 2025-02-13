@@ -108,7 +108,7 @@ namespace TinyEditor
 
                     foreach (var spriteData in mapData.AnimatedSprites)
                     {
-                        // Carrega a textura usando o TextureLoader
+                        // Tenta carregar a textura (se não existir, o TextureLoader solicitará ao usuário)
                         var texture = Game1.TextureLoader.Load(spriteData.TextureID);
 
                         // Cria o sprite usando os dados carregados
@@ -129,5 +129,7 @@ namespace TinyEditor
             }
             return null;
         }
+
+
     }
 }

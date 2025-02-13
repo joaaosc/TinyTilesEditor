@@ -29,7 +29,8 @@ namespace TinyEditor
         private Rectangle saveButtonRect;
         private Rectangle loadButtonRect;
         private Rectangle addAnimatedSpriteButtonRect = new Rectangle(20, 440, 150, 40);
-        
+        private Rectangle removeAnimatedSpriteButtonRect = new Rectangle(20, 490, 150, 40);
+
         // O nosso ColorPicker para selecionar cores via sliders RGB
         private ColorPicker colorPicker;
 
@@ -40,6 +41,8 @@ namespace TinyEditor
         public event Action OnSaveClicked;
         public event Action OnLoadClicked;
         public event Action OnAddAnimatedSpriteClicked;
+        public event Action OnRemoveAnimatedSpriteClicked;
+
 
         public GUIManager(Texture2D pixel, SpriteFont font, int screenWidth, int screenHeight)
         {
@@ -85,6 +88,11 @@ namespace TinyEditor
                 else if (addAnimatedSpriteButtonRect.Contains(mousePosition))
                 {
                     OnAddAnimatedSpriteClicked?.Invoke();
+
+                }
+                else if (removeAnimatedSpriteButtonRect.Contains(mousePosition))
+                {
+                    OnRemoveAnimatedSpriteClicked?.Invoke();
                     return;
                 }
                 // Como removemos a paleta fixa, não precisamos tratar cliques para selecionar cores fixas.
@@ -126,6 +134,12 @@ namespace TinyEditor
             spriteBatch.Draw(pixel, addAnimatedSpriteButtonRect, addSpriteButtonColor);
             spriteBatch.DrawString(font, "Add Sprite", new Vector2(addAnimatedSpriteButtonRect.X + 20, addAnimatedSpriteButtonRect.Y + 10), Color.Black);
 
+            // Botão "Remover Sprite"
+            Color removeButtonColor = Color.Gray;
+            spriteBatch.Draw(pixel, removeAnimatedSpriteButtonRect, removeButtonColor);
+            spriteBatch.DrawString(font, "Remove Sprite",
+                new Vector2(removeAnimatedSpriteButtonRect.X + 5, removeAnimatedSpriteButtonRect.Y + 10),
+                Color.Black);
 
             // Desenha o ColorPicker (que agora é a única forma de selecionar uma cor)
             colorPicker.Draw(spriteBatch);
