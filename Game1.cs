@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -8,6 +9,7 @@ using Microsoft.Scripting.Hosting;
 using ButtonState = Microsoft.Xna.Framework.Input.ButtonState;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using MessageBox = System.Windows.Forms.MessageBox;
+using TinyAnimation;
 
 namespace TinyEditor
 {
@@ -25,6 +27,21 @@ namespace TinyEditor
         private MapManager mapManager;
         private TextureListUI textureListUI;
         private bool editModeActive = false;
+        // Armazena a textura do sprite animado que foi escolhida pelo usuário
+        private Texture2D pendingAnimatedSpriteTexture = null;
+        // Lista de sprites animados adicionados no mapa
+        private List<AnimatedSprite> animatedSprites;
+
+        // Variável para controle do sprite que está sendo arrastado (drag & drop)
+        private AnimatedSprite draggingSprite = null;
+
+        // Armazena o offset entre a posição do sprite e o mouse no momento do clique
+        private Vector2 dragOffset;
+
+        // Flag para indicar que o usuário está no modo de adição de sprite
+        private bool addingAnimatedSprite = false;
+        // Textura padrão para o sprite
+        private Texture2D fireTexture;
 
         // Textura de 1x1 pixel para desenhar retângulos
         private Texture2D pixel;
@@ -42,6 +59,7 @@ namespace TinyEditor
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
             Window.AllowUserResizing = true;
+            animatedSprites = new List<AnimatedSprite>();
         }
 
         protected override void Initialize()
@@ -73,6 +91,7 @@ namespace TinyEditor
         protected override void LoadContent()
         {
             spriteBatch = new SpriteBatch(GraphicsDevice);
+            animatedSprites = new List<AnimatedSprite>();
 
             // Cria uma textura de 1x1 pixel branco para desenhar retângulos
             pixel = new Texture2D(GraphicsDevice, 1, 1);
@@ -90,6 +109,9 @@ namespace TinyEditor
             // Subscreve os eventos da GUI para salvar e carregar mapas
             guiManager.OnSaveClicked += HandleSaveMap;
             guiManager.OnLoadClicked += HandleLoadMap;
+            guiManager.OnAddAnimatedSpriteClicked += HandleAddAnimatedSprite;
+
+            animatedSprites = new List<AnimatedSprite>();
 
             previousGuiMouseState = Mouse.GetState();
         }
@@ -102,6 +124,8 @@ namespace TinyEditor
                 Exit();
 
             MouseState currentMouseState = Mouse.GetState();
+            KeyboardState currentKeyboardState = Keyboard.GetState();
+
 
             // Processa cliques na área da GUI (sidebar à esquerda)
             if (currentMouseState.LeftButton == ButtonState.Pressed &&
@@ -127,9 +151,7 @@ namespace TinyEditor
                 }
             }
 
-            // Atualiza a GUI e outros gerenciadores
-            guiManager.Update();
-            inputManager.Update();
+
 
             // Se o mouse NÃO estiver na área do painel de texturas, atualiza o MapEditor (para pintura)
             if (!textureListUI.PanelArea.Contains(currentMouseState.Position))
@@ -139,7 +161,6 @@ namespace TinyEditor
             // Caso esteja na sidebar, evita que o MapEditor pinte o mapa
 
             // Verifica se a tecla I foi pressionada para importar uma nova textura
-            KeyboardState currentKeyboardState = Keyboard.GetState();
             if (currentKeyboardState.IsKeyDown(Keys.I) && !previousKeyboardState.IsKeyDown(Keys.I))
             {
                 ImportarTextura();
@@ -154,19 +175,77 @@ namespace TinyEditor
                 guiManager.SetEditModeActive(editModeActive);
             }
 
-            previousKeyboardState = currentKeyboardState;
-            previousGuiMouseState = currentMouseState;
+            // Converte a posição do mouse de tela para coordenadas do mundo
+            Vector2 mouseScreenPos = new Vector2(currentMouseState.X, currentMouseState.Y);
+            Matrix inverseTransform = Matrix.Invert(camera.GetTransformation());
+            Vector2 mouseWorldPos = Vector2.Transform(mouseScreenPos, inverseTransform);
 
+            // Se o botão esquerdo foi pressionado e não estamos arrastando, verifica se clicamos em algum sprite
+            if (draggingSprite == null &&
+                currentMouseState.LeftButton == ButtonState.Pressed &&
+                previousGuiMouseState.LeftButton == ButtonState.Released)
+            {
+                foreach (var sprite in animatedSprites)
+                {
+                    // Cria um retângulo baseado na posição e tamanho do sprite (usando o primeiro frame)
+                    Rectangle spriteRect = new Rectangle(
+                        (int)sprite.Position.X,
+                        (int)sprite.Position.Y,
+                        sprite.FrameWidth,
+                        sprite.FrameHeight);
+                    if (spriteRect.Contains(new Point((int)mouseWorldPos.X, (int)mouseWorldPos.Y)))
+                    {
+                        draggingSprite = sprite;
+                        dragOffset = sprite.Position - mouseWorldPos;
+                        break;
+                    }
+                }
+            }
+
+            // Se estamos arrastando um sprite, atualiza sua posição
+            if (draggingSprite != null && currentMouseState.LeftButton == ButtonState.Pressed)
+            {
+                draggingSprite.Position = mouseWorldPos + dragOffset;
+            }
+
+            // Quando o botão esquerdo for liberado, encerra o arraste
+            if (draggingSprite != null && currentMouseState.LeftButton == ButtonState.Released)
+            {
+                draggingSprite = null;
+            }
+
+            // Atualiza a animação de cada sprite
+            foreach (var sprite in animatedSprites)
+            {
+                sprite.Update(gameTime);
+            }
+
+            // Atualiza outros componentes (GUI, InputManager, MapEditor, etc.)
+            guiManager.Update();
+            inputManager.Update();
+            if (!textureListUI.PanelArea.Contains(currentMouseState.Position))
+            {
+                mapEditor.Update();
+            }
+
+            previousGuiMouseState = currentMouseState;
+            previousKeyboardState = currentKeyboardState;
             base.Update(gameTime);
+
+
         }
 
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.Black);
 
-            // Desenha o mapa aplicando a transformação da câmera
+            // Inicia o spriteBatch com a transformação da câmera para desenhar o mapa e os sprites
             spriteBatch.Begin(transformMatrix: camera.GetTransformation());
             currentMap.Draw(spriteBatch, pixel);
+            foreach (var sprite in animatedSprites)
+            {
+                sprite.Draw(spriteBatch);
+            }
             spriteBatch.End();
 
             // Desenha a GUI (sem transformação de câmera)
@@ -179,6 +258,7 @@ namespace TinyEditor
             textureListUI.Draw(spriteBatch, pixel, font);
             spriteBatch.End();
 
+       
             base.Draw(gameTime);
         }
 
@@ -274,53 +354,41 @@ namespace TinyEditor
             }
         }
 
-        private void DrawFogOfWar(SpriteBatch spriteBatch)
+        private void HandleAddAnimatedSprite()
         {
-            // Define os limites do mapa em coordenadas do mundo.
-            Rectangle mapBounds = new Rectangle(0, 0, currentMap.Columns * currentMap.TileSize, currentMap.Rows * currentMap.TileSize);
-
-            // Calcula o retângulo visível (view rectangle) em coordenadas do mundo.
-            Vector2 topLeft = Vector2.Transform(Vector2.Zero, Matrix.Invert(camera.GetTransformation()));
-            Vector2 bottomRight = Vector2.Transform(new Vector2(graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight),
-                                                    Matrix.Invert(camera.GetTransformation()));
-            Rectangle viewRect = new Rectangle((int)topLeft.X, (int)topLeft.Y,
-                                               (int)(bottomRight.X - topLeft.X), (int)(bottomRight.Y - topLeft.Y));
-
-            // Define a cor do fog (preto com transparência, ajuste o valor alfa conforme desejado).
-            Color fogColor = new Color(0, 0, 0, 180);
-
-            // Se houver área à esquerda do mapa (quando a visão vai além de x=0).
-            if (viewRect.X < mapBounds.X)
+            using (OpenFileDialog dialog = new OpenFileDialog())
             {
-                int fogWidth = mapBounds.X - viewRect.X;
-                Rectangle fogRect = new Rectangle(viewRect.X, viewRect.Y, fogWidth, viewRect.Height);
-                spriteBatch.Draw(pixel, fogRect, fogColor);
-            }
+                dialog.Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp";
+                dialog.Title = "Selecione o Sprite Sheet";
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    using (var stream = System.IO.File.OpenRead(dialog.FileName))
+                    {
+                        pendingAnimatedSpriteTexture = Texture2D.FromStream(GraphicsDevice, stream);
+                    }
 
-            // Se houver área acima do mapa (quando a visão vai além de y=0).
-            if (viewRect.Y < mapBounds.Y)
-            {
-                int fogHeight = mapBounds.Y - viewRect.Y;
-                Rectangle fogRect = new Rectangle(viewRect.X, viewRect.Y, viewRect.Width, fogHeight);
-                spriteBatch.Draw(pixel, fogRect, fogColor);
-            }
+                    // Calcula o centro da tela em coordenadas do mundo
+                    // Se sua classe Camera2D possuir a propriedade Position, use-a; caso contrário, ajuste conforme necessário.
+                    Vector2 worldCenter = camera.Position + new Vector2(GraphicsDevice.Viewport.Width / 2f,
+                        GraphicsDevice.Viewport.Height / 2f);
 
-            // Se houver área à direita do mapa.
-            if (viewRect.Right > mapBounds.Right)
-            {
-                int fogWidth = viewRect.Right - mapBounds.Right;
-                Rectangle fogRect = new Rectangle(mapBounds.Right, viewRect.Y, fogWidth, viewRect.Height);
-                spriteBatch.Draw(pixel, fogRect, fogColor);
-            }
+                    // Cria o novo sprite animado no centro do mundo visível
+                    AnimatedSprite newSprite = new AnimatedSprite(
+                        pendingAnimatedSpriteTexture,
+                        worldCenter,
+                        frameWidth: 256 / 8,    // 256 / 2 frames
+                        frameHeight: 48,
+                        frameCount: 8,      // Apenas 2 frames na animação
+                        frameTime: 0.2f);
+                    ;                        ;
+                    animatedSprites.Add(newSprite);
 
-            // Se houver área abaixo do mapa.
-            if (viewRect.Bottom > mapBounds.Bottom)
-            {
-                int fogHeight = viewRect.Bottom - mapBounds.Bottom;
-                Rectangle fogRect = new Rectangle(viewRect.X, mapBounds.Bottom, viewRect.Width, fogHeight);
-                spriteBatch.Draw(pixel, fogRect, fogColor);
+                    // Limpa a textura pendente
+                    pendingAnimatedSpriteTexture = null;
+                }
             }
         }
+
 
     }
 }

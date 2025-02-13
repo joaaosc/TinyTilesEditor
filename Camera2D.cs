@@ -24,6 +24,8 @@ namespace TinyEditor
         /// </summary>
         public float Rotation { get; set; } = 0f;
 
+        public Vector2 Position { get; set; }
+
         private int viewportWidth;
         private int viewportHeight;
 

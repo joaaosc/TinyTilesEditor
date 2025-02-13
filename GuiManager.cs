@@ -28,7 +28,8 @@ namespace TinyEditor
         private Rectangle editButtonRect;
         private Rectangle saveButtonRect;
         private Rectangle loadButtonRect;
-
+        private Rectangle addAnimatedSpriteButtonRect = new Rectangle(20, 440, 150, 40);
+        
         // O nosso ColorPicker para selecionar cores via sliders RGB
         private ColorPicker colorPicker;
 
@@ -38,6 +39,7 @@ namespace TinyEditor
         // Eventos para Save/Load (se desejar)
         public event Action OnSaveClicked;
         public event Action OnLoadClicked;
+        public event Action OnAddAnimatedSpriteClicked;
 
         public GUIManager(Texture2D pixel, SpriteFont font, int screenWidth, int screenHeight)
         {
@@ -80,6 +82,11 @@ namespace TinyEditor
                 {
                     OnLoadClicked?.Invoke();
                 }
+                else if (addAnimatedSpriteButtonRect.Contains(mousePosition))
+                {
+                    OnAddAnimatedSpriteClicked?.Invoke();
+                    return;
+                }
                 // Como removemos a paleta fixa, não precisamos tratar cliques para selecionar cores fixas.
                 // O ColorPicker já tratará os cliques internos nos seus sliders.
             }
@@ -114,7 +121,10 @@ namespace TinyEditor
             spriteBatch.Draw(pixel, loadButtonRect, Color.LightBlue);
             spriteBatch.DrawString(font, "Load Map", new Vector2(loadButtonRect.X + 20, loadButtonRect.Y + 10), Color.Black);
 
-            Color buttonColor = EditModeActive ? Color.LightCoral : Color.Gray;
+            // Botão "Adicionar Sprite Animado"
+            Color addSpriteButtonColor = Color.Gray;
+            spriteBatch.Draw(pixel, addAnimatedSpriteButtonRect, addSpriteButtonColor);
+            spriteBatch.DrawString(font, "Add Sprite", new Vector2(addAnimatedSpriteButtonRect.X + 20, addAnimatedSpriteButtonRect.Y + 10), Color.Black);
 
 
             // Desenha o ColorPicker (que agora é a única forma de selecionar uma cor)
