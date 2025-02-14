@@ -9,7 +9,7 @@ namespace TinyEditor
     public class GUIManager
     {
 
-
+        public bool TileTypeEditingMode { get; set; }
         // Indica se estamos no modo de edição
         public bool EditModeActive = false;
         public void SetEditModeActive(bool active)
@@ -31,6 +31,8 @@ namespace TinyEditor
         private Rectangle addAnimatedSpriteButtonRect = new Rectangle(20, 440, 150, 40);
         private Rectangle removeAnimatedSpriteButtonRect = new Rectangle(20, 490, 150, 40);
         private Rectangle playButtonRect = new Rectangle(40, 540, 150, 40);
+        private Rectangle tileTypeToggleButtonRect = new Rectangle(20, 570, 150, 40);
+
 
         // O nosso ColorPicker para selecionar cores via sliders RGB
         private ColorPicker colorPicker;
@@ -44,6 +46,7 @@ namespace TinyEditor
         public event Action OnAddAnimatedSpriteClicked;
         public event Action OnRemoveAnimatedSpriteClicked;
         public event Action OnPlayClicked;
+        public event Action OnTileTypeToggleClicked;
 
 
         public GUIManager(Texture2D pixel, SpriteFont font, int screenWidth, int screenHeight)
@@ -100,6 +103,10 @@ namespace TinyEditor
                 else if (playButtonRect.Contains(mousePosition))
                 {
                     OnPlayClicked?.Invoke();
+                }
+                else if (tileTypeToggleButtonRect.Contains(mousePosition))
+                {
+                    OnTileTypeToggleClicked?.Invoke();
                     return;
                 }
                 // Como removemos a paleta fixa, não precisamos tratar cliques para selecionar cores fixas.
@@ -152,6 +159,14 @@ namespace TinyEditor
             Color playButtonColor = Color.Yellow;
             spriteBatch.Draw(pixel, playButtonRect, playButtonColor);
             spriteBatch.DrawString(font, "Play", new Vector2(playButtonRect.X + 10, playButtonRect.Y + 10), Color.Black);
+
+            // Desenha o botão de TileType Editing
+            Color buttonColor = Color.Gray;
+            spriteBatch.Draw(pixel, tileTypeToggleButtonRect, buttonColor);
+
+            // Exibe o estado atual (vamos supor que você receba esse estado externamente)
+            string text = "TileType Edit: " + (TileTypeEditingMode ? "ON" : "OFF");
+            spriteBatch.DrawString(font, text, new Vector2(tileTypeToggleButtonRect.X + 5, tileTypeToggleButtonRect.Y + 10), Color.White);
 
 
             // Desenha o ColorPicker (que agora é a única forma de selecionar uma cor)

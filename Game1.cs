@@ -34,6 +34,8 @@ namespace TinyEditor
         private TextureListUI textureListUI;
         private bool editModeActive = false;
         private bool isRemovingSprite = false;
+        private bool tileTypeEditingMode = false;
+        private int maxTileType = 3;
 
         // Armazena a textura do sprite animado que foi escolhida pelo usuário
         private Texture2D pendingAnimatedSpriteTexture = null;
@@ -119,6 +121,7 @@ namespace TinyEditor
             guiManager.OnAddAnimatedSpriteClicked += HandleAddAnimatedSprite;
             guiManager.OnRemoveAnimatedSpriteClicked += HandleRemoveAnimatedSprite;
             guiManager.OnPlayClicked += HandlePlayButtonClicked;
+            guiManager.OnTileTypeToggleClicked += HandleTileTypeToggleClicked;
 
             animatedSprites = new List<AnimatedSprite>();
 
@@ -261,11 +264,28 @@ namespace TinyEditor
                 }
             }
 
+            // Se o modo de edição de TileType estiver ativo, e o usuário clicar com Ctrl + Left Click:
+            if (tileTypeEditingMode &&
+                currentMouseState.LeftButton == ButtonState.Pressed &&
+                previousGuiMouseState.LeftButton == ButtonState.Released &&
+                (currentKeyboardState.IsKeyDown(Keys.LeftControl) || currentKeyboardState.IsKeyDown(Keys.RightControl)))
+            {
+                // Calcula a coluna e linha do tile usando as coordenadas do mundo:
+                int col = (int)(mouseWorldPos.X / currentMap.TileSize);
+                int row = (int)(mouseWorldPos.Y / currentMap.TileSize);
+
+                if (row >= 0 && row < currentMap.Rows && col >= 0 && col < currentMap.Columns)
+                {
+                    // Atualiza o TileType: cicla entre 0, 1 e 2
+                    currentMap.Tiles[row, col].TileType = (currentMap.Tiles[row, col].TileType + 1) % 3;
+                    Console.WriteLine($"Tile at ({row},{col}) changed to type {currentMap.Tiles[row, col].TileType}");
+                }
+            }
+
+
             previousGuiMouseState = currentMouseState;
             previousKeyboardState = currentKeyboardState;
             base.Update(gameTime);
-
-
         }
 
         protected override void Draw(GameTime gameTime)
@@ -330,25 +350,7 @@ namespace TinyEditor
             }
         }
 
-        /// <summary>
-        /// Abre um OpenFileDialog para carregar uma imagem e retorna a Texture2D correspondente.
-        /// </summary>
-        private Texture2D LoadTextureFromFile(GraphicsDevice graphicsDevice)
-        {
-            Texture2D texture = null;
-            using (OpenFileDialog dialog = new OpenFileDialog())
-            {
-                dialog.Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp";
-                if (dialog.ShowDialog() == DialogResult.OK)
-                {
-                    using (System.IO.FileStream stream = System.IO.File.OpenRead(dialog.FileName))
-                    {
-                        texture = Texture2D.FromStream(graphicsDevice, stream);
-                    }
-                }
-            }
-            return texture;
-        }
+
 
         /// <summary>
         /// Método chamado quando "Save Map" é clicado na GUI.
@@ -621,6 +623,15 @@ namespace TinyEditor
                     MessageBox.Show("Textura '" + texName + "' não encontrada na pasta: " + texturesFolder);
                 }
             }
+        }
+
+        // Método que é chamado quando o botão de toggle de edição de TileType é clicado
+        private void HandleTileTypeToggleClicked()
+        {
+            tileTypeEditingMode = !tileTypeEditingMode;
+            // Atualiza também a propriedade da GUI
+            guiManager.TileTypeEditingMode = tileTypeEditingMode;
+            System.Diagnostics.Debug.WriteLine("Tile Type Editing mode: " + tileTypeEditingMode);
         }
 
     }

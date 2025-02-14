@@ -125,13 +125,49 @@ namespace TinyEditor
                             Rectangle tileRect = Tiles[row, col].DestinationRectangle;
 
                             // Borda superior
-                            spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y, tileRect.Width, thickness), borderColor);
+                            spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y, tileRect.Width, thickness),
+                                borderColor);
                             // Borda inferior
-                            spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y + tileRect.Height - thickness, tileRect.Width, thickness), borderColor);
+                            spriteBatch.Draw(pixel,
+                                new Rectangle(tileRect.X, tileRect.Y + tileRect.Height - thickness, tileRect.Width,
+                                    thickness), borderColor);
                             // Borda esquerda
-                            spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y, thickness, tileRect.Height), borderColor);
+                            spriteBatch.Draw(pixel, new Rectangle(tileRect.X, tileRect.Y, thickness, tileRect.Height),
+                                borderColor);
                             // Borda direita
-                            spriteBatch.Draw(pixel, new Rectangle(tileRect.X + tileRect.Width - thickness, tileRect.Y, thickness, tileRect.Height), borderColor);
+                            spriteBatch.Draw(pixel,
+                                new Rectangle(tileRect.X + tileRect.Width - thickness, tileRect.Y, thickness,
+                                    tileRect.Height), borderColor);
+                            ///////////
+                            ///
+                            switch (Tiles[row, col].TileType)
+                            {
+                                case 0:
+                                    borderColor = Color.DarkOrange;
+                                    break;
+                                case 1:
+                                    borderColor = Color.Green;
+                                    break;
+                                case 2:
+                                    borderColor = Color.Yellow;
+                                    break;
+                                default:
+                                    borderColor = Color.White;
+                                    break;
+                            }
+
+                            // Desenha a borda
+                            Rectangle rect = Tiles[row, col].DestinationRectangle;
+                            // Borda superior
+                            spriteBatch.Draw(pixel, new Rectangle(rect.X, rect.Y, rect.Width, thickness), borderColor);
+                            // Borda inferior
+                            spriteBatch.Draw(pixel, new Rectangle(rect.X, rect.Y + rect.Height - thickness, rect.Width, thickness), borderColor);
+                            // Borda esquerda
+                            spriteBatch.Draw(pixel, new Rectangle(rect.X, rect.Y, thickness, rect.Height), borderColor);
+                            // Borda direita
+                            spriteBatch.Draw(pixel, new Rectangle(rect.X + rect.Width - thickness, rect.Y, thickness, rect.Height), borderColor);
+
+
                         }
                     }
                 }
