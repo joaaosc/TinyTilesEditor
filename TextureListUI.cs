@@ -1,6 +1,8 @@
-﻿using Microsoft.Xna.Framework;
+﻿using System;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace TinyEditor
 {
@@ -94,18 +96,32 @@ namespace TinyEditor
             return null;
         }
 
-        public Texture2D GetTextureByID(string id)
+        /// <summary>
+        /// Verifica se a lista já contém uma textura com o nome especificado.
+        /// </summary>
+        /// <param name="textureName">Nome da textura para procurar.</param>
+        /// <returns>True se existir, caso contrário, false.</returns>
+        public bool ContainsTexture(string textureName)
         {
             foreach (var entry in TextureEntries)
             {
-                if (entry.Name == id)
-                {
-                    return entry.Texture;
-                }
+                if (entry.Name.Equals(textureName, StringComparison.OrdinalIgnoreCase))
+                    return true;
             }
-
-            return null;
+            return false;
         }
+
+        /// <summary>
+        /// Procura e retorna uma textura pelo nome.
+        /// </summary>
+        /// <param name="textureName">Nome da textura.</param>
+        /// <returns>A textura correspondente ou null se não encontrar.</returns>
+        public Texture2D GetTextureByID(string textureName)
+        {
+            var entry = TextureEntries.FirstOrDefault(e => e.Name.Equals(textureName, StringComparison.OrdinalIgnoreCase));
+            return entry?.Texture;
+        }
+
 
     }
 }

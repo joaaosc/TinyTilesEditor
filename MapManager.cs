@@ -6,6 +6,9 @@ using Microsoft.Xna.Framework;
 using SharpDX.Direct3D9;
 using TinyAnimation;
 using static TinyEditor.Tile;
+using static TinyEditor.Game1;
+using System;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace TinyEditor
 {
@@ -91,44 +94,76 @@ namespace TinyEditor
             {
                 string json = File.ReadAllText(filePath);
                 MapData mapData = JsonConvert.DeserializeObject<MapData>(json);
-
-                // Cria um novo objeto Map usando as dimensões salvas
+                // Cria o mapa usando as dimensões salvas
                 Map map = new Map(mapData.Rows, mapData.Columns, mapData.TileSize);
 
-                // Restaura os dados dos tiles, se houver
+                // Restaura os dados dos tiles
                 if (mapData.Tiles != null)
                 {
                     map.SetTileData(mapData.Tiles);
+
+                    // Define a pasta onde estão as texturas
+                    string texturesFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "textures");
+                    // Para cada tile, procura a textura com o mesmo nome
+                    for (int r = 0; r < map.Rows; r++)
+                    {
+                        for (int c = 0; c < map.Columns; c++)
+                        {
+                            var tile = map.Tiles[r, c];
+                            if (!string.IsNullOrEmpty(tile.TextureID))
+                            {
+                                // Constrói o caminho completo para a textura
+                                string texturePath = Path.Combine(texturesFolder, tile.TextureID);
+                                if (File.Exists(texturePath))
+                                {
+                                    // Carrega a textura e atribui ao tile
+                                    tile.Texture = TextureLoader.Load(texturePath);
+                                }
+                                else
+                                {
+                                    // Opcional: use uma textura padrão ou avise o usuário
+                                    // Por exemplo:
+                                    // tile.Texture = TextureLoader.Load(Path.Combine(texturesFolder, "defaultTile.png"));
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Recria os sprites animados
                 if (mapData.AnimatedSprites != null)
                 {
                     map.AnimatedSprites = new List<AnimatedSprite>();
-
+                    string texturesFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "textures");
                     foreach (var spriteData in mapData.AnimatedSprites)
                     {
-                        // Tenta carregar a textura (se não existir, o TextureLoader solicitará ao usuário)
-                        var texture = Game1.TextureLoader.Load(spriteData.TextureID);
-
-                        // Cria o sprite usando os dados carregados
-                        AnimatedSprite sprite = new AnimatedSprite(
-                            texture,
-                            new Vector2(spriteData.PositionX, spriteData.PositionY),
-                            spriteData.FrameWidth,
-                            spriteData.FrameHeight,
-                            spriteData.FrameCount,
-                            spriteData.FrameTime);
-                        sprite.TextureID = spriteData.TextureID;
-
-                        map.AnimatedSprites.Add(sprite);
+                        // Constrói o caminho completo para a textura do sprite
+                        string texturePath = Path.Combine(texturesFolder, spriteData.TextureID);
+                        if (File.Exists(texturePath))
+                        {
+                            Texture2D texture = TextureLoader.Load(texturePath);
+                            AnimatedSprite sprite = new AnimatedSprite(
+                                texture,
+                                new Vector2(spriteData.PositionX, spriteData.PositionY),
+                                spriteData.FrameWidth,
+                                spriteData.FrameHeight,
+                                spriteData.FrameCount,
+                                spriteData.FrameTime);
+                            sprite.TextureID = spriteData.TextureID;
+                            map.AnimatedSprites.Add(sprite);
+                        }
+                        else
+                        {
+                            // Opcional: avise que a textura do sprite não foi encontrada
+                        }
                     }
                 }
-
                 return map;
             }
             return null;
         }
+
+
 
 
     }

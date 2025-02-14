@@ -13,6 +13,8 @@ using MessageBox = System.Windows.Forms.MessageBox;
 using TinyAnimation;
 using SharpDX.Direct3D9;
 using Microsoft.VisualBasic;
+using System.Diagnostics;
+using Newtonsoft.Json;
 
 namespace TinyEditor
 {
@@ -116,7 +118,7 @@ namespace TinyEditor
             guiManager.OnLoadClicked += HandleLoadMap;
             guiManager.OnAddAnimatedSpriteClicked += HandleAddAnimatedSprite;
             guiManager.OnRemoveAnimatedSpriteClicked += HandleRemoveAnimatedSprite;
-
+            guiManager.OnPlayClicked += HandlePlayButtonClicked;
 
             animatedSprites = new List<AnimatedSprite>();
 
@@ -187,14 +189,19 @@ namespace TinyEditor
             Matrix inverseTransform = Matrix.Invert(camera.GetTransformation());
             Vector2 mouseWorldPos = Vector2.Transform(mouseScreenPos, inverseTransform);
 
-            // Se o botão esquerdo foi pressionado e não estamos arrastando, verifica se clicamos em algum sprite
+            foreach (var sprite in currentMap.AnimatedSprites)
+            {
+                sprite.Update(gameTime);
+            }
+
+            // Em seguida, trate o drag & drop
+            // Se não estamos arrastando nenhum sprite e o botão esquerdo foi clicado, verifica se clicamos em algum sprite
             if (draggingSprite == null &&
                 currentMouseState.LeftButton == ButtonState.Pressed &&
                 previousGuiMouseState.LeftButton == ButtonState.Released)
             {
-                foreach (var sprite in animatedSprites)
+                foreach (var sprite in currentMap.AnimatedSprites)
                 {
-                    // Cria um retângulo baseado na posição e tamanho do sprite (usando o primeiro frame)
                     Rectangle spriteRect = new Rectangle(
                         (int)sprite.Position.X,
                         (int)sprite.Position.Y,
@@ -209,22 +216,16 @@ namespace TinyEditor
                 }
             }
 
-            // Se estamos arrastando um sprite, atualiza sua posição
+            // Se estamos arrastando um sprite, atualize sua posição
             if (draggingSprite != null && currentMouseState.LeftButton == ButtonState.Pressed)
             {
                 draggingSprite.Position = mouseWorldPos + dragOffset;
             }
 
-            // Quando o botão esquerdo for liberado, encerra o arraste
+            // Quando o botão esquerdo for liberado, encerre o arraste
             if (draggingSprite != null && currentMouseState.LeftButton == ButtonState.Released)
             {
                 draggingSprite = null;
-            }
-
-            // Atualiza a animação de cada sprite
-            foreach (var sprite in currentMap.AnimatedSprites)
-            {
-                sprite.Update(gameTime);
             }
 
             // Atualiza outros componentes (GUI, InputManager, MapEditor, etc.)
@@ -299,15 +300,33 @@ namespace TinyEditor
         /// </summary>
         private void ImportarTextura()
         {
-            Texture2D texturaImportada = LoadTextureFromFile(GraphicsDevice);
-            if (texturaImportada != null)
+            using (OpenFileDialog dialog = new OpenFileDialog())
             {
-                TextureEntry novaEntrada = new TextureEntry
+                dialog.Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp";
+                dialog.Title = "Selecione uma textura";
+                if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    Name = "Textura " + (textureListUI.TextureEntries.Count + 1),
-                    Texture = texturaImportada
-                };
-                textureListUI.AddTexture(novaEntrada);
+                    // Obtenha apenas o nome do arquivo (sem o caminho)
+                    string fileName = Path.GetFileName(dialog.FileName);
+
+                    // Carrega a textura a partir do arquivo selecionado
+                    Texture2D texturaImportada;
+                    using (var stream = File.OpenRead(dialog.FileName))
+                    {
+                        texturaImportada = Texture2D.FromStream(GraphicsDevice, stream);
+                    }
+
+                    if (texturaImportada != null)
+                    {
+                        // Define o TextureID como o nome real do arquivo
+                        TextureEntry novaEntrada = new TextureEntry
+                        {
+                            Name = fileName,
+                            Texture = texturaImportada
+                        };
+                        textureListUI.AddTexture(novaEntrada);
+                    }
+                }
             }
         }
 
@@ -356,24 +375,29 @@ namespace TinyEditor
                 openDialog.Title = "Load Map";
                 if (openDialog.ShowDialog() == DialogResult.OK)
                 {
+                    // Define a pasta onde estão as texturas (por exemplo, uma pasta "textures" no diretório de saída)
+                    string texturesFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "textures");
+
+                    // Importa todas as texturas referenciadas no JSON do mapa
+                    ImportarTexturasDoMapa(openDialog.FileName, texturesFolder);
+
+                    // Agora carrega o mapa normalmente
                     Map loadedMap = mapManager.LoadMap(openDialog.FileName);
                     if (loadedMap != null)
                     {
-                        // Percorre todos os tiles do mapa para reatribuir as texturas
+                        // Percorre os tiles para reatribuir as texturas usando o textureListUI, se necessário
                         for (int row = 0; row < loadedMap.Rows; row++)
                         {
                             for (int col = 0; col < loadedMap.Columns; col++)
                             {
-                                // Se o tile possui um TextureID salvo, tenta recuperar a textura correspondente
                                 if (!string.IsNullOrEmpty(loadedMap.Tiles[row, col].TextureID))
                                 {
-                                    loadedMap.Tiles[row, col].Texture =
-                                        textureListUI.GetTextureByID(loadedMap.Tiles[row, col].TextureID);
+                                    loadedMap.Tiles[row, col].Texture = textureListUI.GetTextureByID(loadedMap.Tiles[row, col].TextureID);
                                 }
                             }
                         }
 
-                        // Atualiza o mapa atual e os gerenciadores
+                        // Atualiza o mapa atual e os gerenciadores conforme sua lógica
                         currentMap = loadedMap;
                         inputManager = new InputManager(camera, currentMap);
                         mapEditor = new MapEditor(currentMap, camera, guiManager);
@@ -385,7 +409,28 @@ namespace TinyEditor
                 }
             }
         }
+        private void HandlePlayButtonClicked()
+        {
+            // Salva o mapa atual
+            string tempMapPath = @"C:\\Users\\joao\\source\\repos\\TinyGame\\maps\\testmap3.json";
+            mapManager.SaveMap(currentMap, tempMapPath);
 
+            // Constrói o caminho para o executável TinyGame.exe.
+            // Por exemplo, suponha que o executável esteja em uma pasta "TinyGame" no mesmo nível do diretório atual:
+            string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TinyGame.exe");
+            // Se estiver em outro diretório, ajuste o caminho:
+            // string exePath = @"C:\Caminho\Para\TinyGame.exe";
+
+            if (File.Exists(exePath))
+            {
+                Process.Start(exePath);
+            }
+            else
+            {
+                MessageBox.Show("TinyGame.exe não foi encontrado em: " + exePath,
+                    "Erro ao iniciar o jogo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
         private void LoadNewMap(string filePath)
         {
             Map loadedMap = mapManager.LoadMap(filePath);
@@ -511,6 +556,70 @@ namespace TinyEditor
                 }
                 loadedTextures[textureID] = texture;
                 return texture;
+            }
+        }
+
+        private void ImportarTexturasDoMapa(string mapJsonPath, string texturesFolder)
+        {
+            // Lê o JSON e desserializa-o para o DTO MapData (usado no MapManager)
+            string json = File.ReadAllText(mapJsonPath);
+            var mapData = JsonConvert.DeserializeObject<MapManager.MapData>(json);
+
+            // Cria um conjunto para armazenar os nomes únicos das texturas
+            HashSet<string> textureNames = new HashSet<string>();
+
+            // Se houver dados de tiles, adicione os TextureID de cada tile
+            if (mapData.Tiles != null)
+            {
+                foreach (var row in mapData.Tiles)
+                {
+                    foreach (var tileData in row)
+                    {
+                        if (!string.IsNullOrEmpty(tileData.TextureID))
+                            textureNames.Add(tileData.TextureID);
+                    }
+                }
+            }
+
+            // Se houver dados de sprites animados, adicione os TextureID
+            if (mapData.AnimatedSprites != null)
+            {
+                foreach (var spriteData in mapData.AnimatedSprites)
+                {
+                    if (!string.IsNullOrEmpty(spriteData.TextureID))
+                        textureNames.Add(spriteData.TextureID);
+                }
+            }
+
+            // Para cada textura referenciada, constrói o caminho completo e importa
+            foreach (string texName in textureNames)
+            {
+                string filePath = Path.Combine(texturesFolder, texName);
+                if (File.Exists(filePath))
+                {
+                    try
+                    {
+                        // Carrega a textura usando o TextureLoader
+                        Texture2D texture = TextureLoader.Load(filePath);
+                        // Cria uma entrada de textura usando o nome do arquivo
+                        TextureEntry novaEntrada = new TextureEntry
+                        {
+                            Name = texName,
+                            Texture = texture
+                        };
+                        // Adiciona à lista do TextureListUI se ainda não existir
+                        if (!textureListUI.ContainsTexture(texName))
+                            textureListUI.AddTexture(novaEntrada);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Erro ao carregar a textura '" + texName + "': " + ex.Message);
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Textura '" + texName + "' não encontrada na pasta: " + texturesFolder);
+                }
             }
         }
 

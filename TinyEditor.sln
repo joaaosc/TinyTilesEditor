@@ -5,7 +5,9 @@ VisualStudioVersion = 17.11.35208.52
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TinyEditor", "TinyEditor.csproj", "{D656F75C-35A8-4A72-9789-FC99EFD8066E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TinyAnimation", "..\TinyAnimation\TinyAnimation.csproj", "{15DE082C-D46A-440C-8D73-9FD0426FE868}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TinyAnimation", "..\TinyAnimation\TinyAnimation.csproj", "{15DE082C-D46A-440C-8D73-9FD0426FE868}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TinyGame", "..\TinyGame\TinyGame.csproj", "{B0B5A51C-9334-4771-BD13-2002FF620E36}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{15DE082C-D46A-440C-8D73-9FD0426FE868}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{15DE082C-D46A-440C-8D73-9FD0426FE868}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{15DE082C-D46A-440C-8D73-9FD0426FE868}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B0B5A51C-9334-4771-BD13-2002FF620E36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B0B5A51C-9334-4771-BD13-2002FF620E36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B0B5A51C-9334-4771-BD13-2002FF620E36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B0B5A51C-9334-4771-BD13-2002FF620E36}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
