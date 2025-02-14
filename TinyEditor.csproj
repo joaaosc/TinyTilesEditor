@@ -12,6 +12,11 @@
     <ApplicationIcon>Icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="NewFolder1\**" />
+    <EmbeddedResource Remove="NewFolder1\**" />
+    <None Remove="NewFolder1\**" />
+  </ItemGroup>
+  <ItemGroup>
     <None Remove="textures\algae green.png" />
     <None Remove="textures\black.png" />
     <None Remove="textures\caveCliff2.png" />
@@ -107,6 +112,9 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TinyAnimation\TinyAnimation.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="maps\" />
   </ItemGroup>
   <Target Name="RestoreDotnetTools" BeforeTargets="Restore">
     <Message Text="Restoring dotnet tools" Importance="High" />

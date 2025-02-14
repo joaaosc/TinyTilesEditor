@@ -36,6 +36,8 @@ namespace TinyEditor
         private bool isRemovingSprite = false;
         private bool tileTypeEditingMode = false;
         private int maxTileType = 3;
+        private string mapsFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "maps");
+
 
         // Armazena a textura do sprite animado que foi escolhida pelo usuário
         private Texture2D pendingAnimatedSpriteTexture = null;
@@ -121,7 +123,7 @@ namespace TinyEditor
             guiManager.OnAddAnimatedSpriteClicked += HandleAddAnimatedSprite;
             guiManager.OnRemoveAnimatedSpriteClicked += HandleRemoveAnimatedSprite;
             guiManager.OnPlayClicked += HandlePlayButtonClicked;
-            guiManager.OnTileTypeToggleClicked += HandleTileTypeToggleClicked;
+            guiManager.OnTileTypeEditClicked += HandleTileTypeEditButtonClicked;
 
             animatedSprites = new List<AnimatedSprite>();
 
@@ -264,23 +266,6 @@ namespace TinyEditor
                 }
             }
 
-            // Se o modo de edição de TileType estiver ativo, e o usuário clicar com Ctrl + Left Click:
-            if (tileTypeEditingMode &&
-                currentMouseState.LeftButton == ButtonState.Pressed &&
-                previousGuiMouseState.LeftButton == ButtonState.Released &&
-                (currentKeyboardState.IsKeyDown(Keys.LeftControl) || currentKeyboardState.IsKeyDown(Keys.RightControl)))
-            {
-                // Calcula a coluna e linha do tile usando as coordenadas do mundo:
-                int col = (int)(mouseWorldPos.X / currentMap.TileSize);
-                int row = (int)(mouseWorldPos.Y / currentMap.TileSize);
-
-                if (row >= 0 && row < currentMap.Rows && col >= 0 && col < currentMap.Columns)
-                {
-                    // Atualiza o TileType: cicla entre 0, 1 e 2
-                    currentMap.Tiles[row, col].TileType = (currentMap.Tiles[row, col].TileType + 1) % 3;
-                    Console.WriteLine($"Tile at ({row},{col}) changed to type {currentMap.Tiles[row, col].TileType}");
-                }
-            }
 
 
             previousGuiMouseState = currentMouseState;
@@ -413,39 +398,36 @@ namespace TinyEditor
         }
         private void HandlePlayButtonClicked()
         {
-            // Salva o mapa atual
-            string tempMapPath = @"C:\\Users\\joao\\source\\repos\\TinyGame\\maps\\testmap3.json";
-            mapManager.SaveMap(currentMap, tempMapPath);
-
-            // Constrói o caminho para o executável TinyGame.exe.
-            // Por exemplo, suponha que o executável esteja em uma pasta "TinyGame" no mesmo nível do diretório atual:
-            string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TinyGame.exe");
-            // Se estiver em outro diretório, ajuste o caminho:
-            // string exePath = @"C:\Caminho\Para\TinyGame.exe";
-
-            if (File.Exists(exePath))
+            try
             {
-                Process.Start(exePath);
+
+                // Define o caminho para o executável do TinyGame.
+                // Para facilitar, você pode configurar para que o executável esteja no mesmo diretório de saída do editor,
+                // ou ajustar um caminho relativo.
+                string exePath = @"C:\Users\joao\source\repos\TinyGame\bin\Debug\net8.0-windows\TinyGame.exe";
+
+                if (!File.Exists(exePath))
+                {
+                    MessageBox.Show("TinyGame.exe não foi encontrado em: " + exePath,
+                        "Erro ao iniciar o jogo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Inicia o TinyGame passando, se desejar, o caminho do mapa como argumento.
+                // Se o TinyGame foi programado para ler o arquivo "map.json" por padrão, você pode chamar sem argumentos:
+                //System.Diagnostics.Process.Start(exePath);
+
+                // Se preferir, passe o caminho do mapa como argumento:
+                System.Diagnostics.Process.Start(exePath, $"\"{mapManager.GetMapFilePath(currentMap)}\"");
             }
-            else
+            catch (Exception ex)
             {
-                MessageBox.Show("TinyGame.exe não foi encontrado em: " + exePath,
-                    "Erro ao iniciar o jogo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Erro ao iniciar o jogo: " + ex.Message,
+                    "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-        private void LoadNewMap(string filePath)
-        {
-            Map loadedMap = mapManager.LoadMap(filePath);
-            if (loadedMap != null)
-            {
-                // Substitua o mapa atual para que os sprites antigos sejam descartados.
-                currentMap = loadedMap;
-            }
-            else
-            {
-                MessageBox.Show("Falha ao carregar o mapa.", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
+
+
 
         private void HandleRemoveAnimatedSprite()
         {
@@ -625,14 +607,56 @@ namespace TinyEditor
             }
         }
 
-        // Método que é chamado quando o botão de toggle de edição de TileType é clicado
-        private void HandleTileTypeToggleClicked()
+
+        private void HandleTileTypeEditButtonClicked()
         {
-            tileTypeEditingMode = !tileTypeEditingMode;
-            // Atualiza também a propriedade da GUI
-            guiManager.TileTypeEditingMode = tileTypeEditingMode;
-            System.Diagnostics.Debug.WriteLine("Tile Type Editing mode: " + tileTypeEditingMode);
+            // Cria uma lista de nomes únicos de texturas dos tiles do mapa
+            HashSet<string> textureNames = new HashSet<string>();
+            for (int r = 0; r < currentMap.Rows; r++)
+            {
+                for (int c = 0; c < currentMap.Columns; c++)
+                {
+                    string tex = currentMap.Tiles[r, c].TextureID;
+                    if (!string.IsNullOrEmpty(tex))
+                        textureNames.Add(tex);
+                }
+            }
+            List<string> textureList = new List<string>(textureNames);
+
+            using (TileTypeEditForm form = new TileTypeEditForm(textureList))
+            {
+                if (form.ShowDialog() == DialogResult.OK)
+                {
+                    string selectedTexture = form.cmbTextureNames.SelectedItem.ToString();
+                    string selectedTileType = form.cmbTileTypes.SelectedItem.ToString(); // Ex: "Impassable"
+
+                    // Atualiza todos os tiles que usam a textura selecionada
+                    for (int r = 0; r < currentMap.Rows; r++)
+                    {
+                        for (int c = 0; c < currentMap.Columns; c++)
+                        {
+                            if (!string.IsNullOrEmpty(currentMap.Tiles[r, c].TextureID) &&
+                                currentMap.Tiles[r, c].TextureID.Equals(selectedTexture, StringComparison.OrdinalIgnoreCase))
+                            {
+                                currentMap.Tiles[r, c].TileType = selectedTileType;
+                            }
+                        }
+                    }
+                    Console.WriteLine($"Updated tiles with texture '{selectedTexture}' to TileType '{selectedTileType}'");
+
+                    // Salva o mapa atualizado no JSON
+
+                    string mapJsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "maps");
+                    mapManager.SaveMap(currentMap, mapJsonPath);
+                    Console.WriteLine("Map saved successfully at: " + mapJsonPath);
+                }
+            }
         }
+
+
+
+
+
 
     }
 }

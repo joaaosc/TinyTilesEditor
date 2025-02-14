@@ -14,7 +14,12 @@ namespace TinyEditor
 {
     public class MapManager
     {
+        // Continuação do dicionário de Mapas pelo nome, se usado em algum lugar
         private Dictionary<string, Map> maps = new Dictionary<string, Map>();
+
+        // Dicionário para associar cada Map ao seu filePath (caminho de arquivo)
+        private Dictionary<Map, string> mapPaths = new Dictionary<Map, string>();
+
 
         // DTO para armazenar os dados de um sprite animado
         public class AnimatedSpriteData
@@ -82,6 +87,9 @@ namespace TinyEditor
             };
             string json = JsonConvert.SerializeObject(mapData, Formatting.Indented, settings);
             File.WriteAllText(filePath, json);
+
+            // Associa o objeto Map ao filePath no dicionário
+            mapPaths[map] = filePath;
         }
 
         /// <summary>
@@ -122,7 +130,6 @@ namespace TinyEditor
                                 else
                                 {
                                     // Opcional: use uma textura padrão ou avise o usuário
-                                    // Por exemplo:
                                     // tile.Texture = TextureLoader.Load(Path.Combine(texturesFolder, "defaultTile.png"));
                                 }
                             }
@@ -158,13 +165,23 @@ namespace TinyEditor
                         }
                     }
                 }
+
+                // Associa este Map ao filePath
+                mapPaths[map] = filePath;
+
                 return map;
             }
             return null;
         }
 
-
-
-
+        /// <summary>
+        /// Retorna o filePath associado ao objeto Map, ou null se não estiver registrado.
+        /// </summary>
+        public string GetMapFilePath(Map map)
+        {
+            if (mapPaths.TryGetValue(map, out string path))
+                return path;
+            return null;
+        }
     }
 }

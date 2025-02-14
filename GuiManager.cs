@@ -46,7 +46,7 @@ namespace TinyEditor
         public event Action OnAddAnimatedSpriteClicked;
         public event Action OnRemoveAnimatedSpriteClicked;
         public event Action OnPlayClicked;
-        public event Action OnTileTypeToggleClicked;
+        public event Action OnTileTypeEditClicked;
 
 
         public GUIManager(Texture2D pixel, SpriteFont font, int screenWidth, int screenHeight)
@@ -106,7 +106,7 @@ namespace TinyEditor
                 }
                 else if (tileTypeToggleButtonRect.Contains(mousePosition))
                 {
-                    OnTileTypeToggleClicked?.Invoke();
+                    OnTileTypeEditClicked?.Invoke();
                     return;
                 }
                 // Como removemos a paleta fixa, não precisamos tratar cliques para selecionar cores fixas.
@@ -163,10 +163,7 @@ namespace TinyEditor
             // Desenha o botão de TileType Editing
             Color buttonColor = Color.Gray;
             spriteBatch.Draw(pixel, tileTypeToggleButtonRect, buttonColor);
-
-            // Exibe o estado atual (vamos supor que você receba esse estado externamente)
-            string text = "TileType Edit: " + (TileTypeEditingMode ? "ON" : "OFF");
-            spriteBatch.DrawString(font, text, new Vector2(tileTypeToggleButtonRect.X + 5, tileTypeToggleButtonRect.Y + 10), Color.White);
+            spriteBatch.DrawString(font, "TileType Edit", new Vector2(tileTypeToggleButtonRect.X + 5, tileTypeToggleButtonRect.Y + 10), Color.White);
 
 
             // Desenha o ColorPicker (que agora é a única forma de selecionar uma cor)

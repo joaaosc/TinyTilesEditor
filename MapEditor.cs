@@ -65,24 +65,5 @@ namespace TinyEditor
 
             previousMouseState = currentMouseState;
         }
-
-        /// <summary>
-        /// Abre um diálogo para carregar uma textura a partir de um arquivo.
-        /// </summary>
-        public Texture2D LoadTextureFromFile(GraphicsDevice graphicsDevice)
-        {
-            using (OpenFileDialog dialog = new OpenFileDialog())
-            {
-                dialog.Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp";
-                if (dialog.ShowDialog() == DialogResult.OK)
-                {
-                    using (var stream = File.OpenRead(dialog.FileName))
-                    {
-                        return Texture2D.FromStream(graphicsDevice, stream);
-                    }
-                }
-            }
-            return null;
-        }
     }
 }
