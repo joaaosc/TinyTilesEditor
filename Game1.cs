@@ -415,10 +415,10 @@ namespace TinyEditor
 
                 // Inicia o TinyGame passando, se desejar, o caminho do mapa como argumento.
                 // Se o TinyGame foi programado para ler o arquivo "map.json" por padrão, você pode chamar sem argumentos:
-                //System.Diagnostics.Process.Start(exePath);
+                System.Diagnostics.Process.Start(exePath);
 
                 // Se preferir, passe o caminho do mapa como argumento:
-                System.Diagnostics.Process.Start(exePath, $"\"{mapManager.GetMapFilePath(currentMap)}\"");
+                //System.Diagnostics.Process.Start(exePath, $"\"{mapManager.GetMapFilePath(currentMap)}\"");
             }
             catch (Exception ex)
             {

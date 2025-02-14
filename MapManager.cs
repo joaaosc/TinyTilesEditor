@@ -173,15 +173,5 @@ namespace TinyEditor
             }
             return null;
         }
-
-        /// <summary>
-        /// Retorna o filePath associado ao objeto Map, ou null se não estiver registrado.
-        /// </summary>
-        public string GetMapFilePath(Map map)
-        {
-            if (mapPaths.TryGetValue(map, out string path))
-                return path;
-            return null;
-        }
     }
 }
